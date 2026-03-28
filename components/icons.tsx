@@ -89,6 +89,58 @@ export function IconExternalLink(props: IconProps) {
   );
 }
 
+export function IconDownload(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </IconBase>
+  );
+}
+
+export function IconSpotify(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M5.8 9.9c4-1.2 8.7-1 12 .8" />
+      <path d="M6.8 12.4c3.2-1 6.8-.8 9.4.7" />
+      <path d="M7.9 14.9c2.3-.7 4.8-.5 6.7.4" />
+    </IconBase>
+  );
+}
+
+export function IconAppleMusic(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M10 7.5v8" />
+      <path d="m10 7.5 6.6-1.2v7.5" />
+      <circle cx="8.2" cy="17" r="2" />
+      <circle cx="14.8" cy="15.8" r="2" />
+    </IconBase>
+  );
+}
+
+export function IconDeezer(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <rect x="3" y="15.5" width="2.4" height="5.5" rx="0.6" />
+      <rect x="6.3" y="13" width="2.4" height="8" rx="0.6" />
+      <rect x="9.6" y="10.5" width="2.4" height="10.5" rx="0.6" />
+      <rect x="12.9" y="8" width="2.4" height="13" rx="0.6" />
+      <rect x="16.2" y="11.5" width="2.4" height="9.5" rx="0.6" />
+      <rect x="19.5" y="14" width="1.5" height="7" rx="0.5" />
+    </svg>
+  );
+}
+
+export function IconTidal(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="m12 4 3 3-3 3-3-3 3-3Zm-5.5 5.5 3 3-3 3-3-3 3-3Zm11 0 3 3-3 3-3-3 3-3Zm-5.5 5.5 3 3-3 3-3-3 3-3Z" />
+    </svg>
+  );
+}
+
 export function IconInstagram(props: IconProps) {
   return (
     <IconBase {...props}>

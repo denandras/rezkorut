@@ -21,25 +21,22 @@ type MotionState = {
   active: boolean;
 };
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 export default function ProximityEffects() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const supportsInteractiveHover = window.matchMedia(
-      "(hover: hover) and (pointer: fine)",
-    ).matches;
+    const supportsInteractiveHover =
+      window.matchMedia("(hover: hover) and (pointer: fine)").matches ||
+      window.matchMedia("(any-hover: hover) and (any-pointer: fine)").matches;
     const hasCoarsePointer =
       window.matchMedia("(pointer: coarse)").matches ||
       window.matchMedia("(any-pointer: coarse)").matches;
-    const allowsMotion = window.matchMedia(
-      "(prefers-reduced-motion: no-preference)",
-    ).matches;
+    const allowsMotion = window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
     if (!allowsMotion) return;
 
-    const usePointerAttraction = supportsInteractiveHover && !hasCoarsePointer;
+    let hasMouseInput = false;
 
     let mx = -9999;
     let my = -9999;
@@ -47,13 +44,9 @@ export default function ProximityEffects() {
     let lastScrollY = window.scrollY;
     let lastScrollTs = performance.now();
     let raf = 0;
-    let lastFrameTs = performance.now();
-    let lowFpsFrameCount = 0;
-    let effectsDisabledForPerf = false;
     const states = new Map<HTMLElement, MotionState>();
 
-    const getTargets = () =>
-      Array.from(document.querySelectorAll<HTMLElement>("[data-proximity]"));
+    const getTargets = () => Array.from(document.querySelectorAll<HTMLElement>("[data-proximity]"));
 
     const getState = (el: HTMLElement) => {
       let state = states.get(el);
@@ -91,142 +84,174 @@ export default function ProximityEffects() {
 
     const update = () => {
       raf = 0;
-      const nowTs = performance.now();
-      const frameMs = nowTs - lastFrameTs;
-      lastFrameTs = nowTs;
-
-      if (frameMs > 1000 / 40) {
-        lowFpsFrameCount += 1;
-      } else {
-        lowFpsFrameCount = Math.max(0, lowFpsFrameCount - 1);
-      }
-
-      if (lowFpsFrameCount > 24 && !effectsDisabledForPerf) {
-        effectsDisabledForPerf = true;
-        getTargets().forEach(hardResetTarget);
-        return;
-      }
-
-      if (effectsDisabledForPerf) return;
-
-      const lerpFactor = clamp(frameMs / 16, 0.5, 4);
+      let hasActiveMotion = false;
       const targets = getTargets();
+      const activeSet = new Set(targets);
+
+      for (const knownEl of states.keys()) {
+        if (!activeSet.has(knownEl)) {
+          states.delete(knownEl);
+        }
+      }
 
       for (const el of targets) {
-        const rect = el.getBoundingClientRect();
-        const strength = parseFloat(el.dataset.proximityStrength ?? "1.2");
-        const noGlow = el.dataset.proximityNoGlow === "true";
-
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        const dx = mx - cx;
-        const dy = my - cy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const activationRadius = Math.max(rect.width, rect.height) * 2.4;
-        const isNear = dist < activationRadius;
-
         const state = getState(el);
+        const rect = el.getBoundingClientRect();
+        const usePointerAttraction = supportsInteractiveHover || hasMouseInput;
+        if (usePointerAttraction) {
+          const isInside = mx >= rect.left && mx <= rect.right && my >= rect.top && my <= rect.bottom;
 
-        if (usePointerAttraction && isNear) {
-          const norm = activationRadius;
-          const pull = Math.max(0, 1 - dist / norm);
-          const maxShift = strength * 5;
-          state.targetTx = clamp((dx / norm) * maxShift * pull, -maxShift, maxShift);
-          state.targetTy = clamp((dy / norm) * maxShift * pull, -maxShift, maxShift);
-          state.targetGlow = noGlow ? 0 : pull * 0.9;
-          state.targetShadow = pull * 0.35;
-
-          const mxPct = clamp(((mx - rect.left) / rect.width) * 100, 0, 100);
-          const myPct = clamp(((my - rect.top) / rect.height) * 100, 0, 100);
-          state.targetTrailX = mxPct;
-          state.targetTrailY = myPct;
-          state.targetTrailGlow = noGlow ? 0 : pull * 0.7;
-        } else {
-          state.targetTx = 0;
-          state.targetTy = 0;
-          state.targetGlow = 0;
-          state.targetShadow = 0;
-          state.targetTrailGlow = 0;
-        }
-
-        const lerp = (a: number, b: number, t: number) => a + (b - a) * clamp(t * 0.14 * lerpFactor, 0, 1);
-
-        state.tx = lerp(state.tx, state.targetTx, 1);
-        state.ty = lerp(state.ty, state.targetTy, 1);
-        state.glow = lerp(state.glow, state.targetGlow, 1);
-        state.shadow = lerp(state.shadow, state.targetShadow, 1);
-        state.trailX = lerp(state.trailX, state.targetTrailX, 1);
-        state.trailY = lerp(state.trailY, state.targetTrailY, 1);
-        state.trailGlow = lerp(state.trailGlow, state.targetTrailGlow, 1);
-
-        const wasActive = state.active;
-        state.active = isNear && usePointerAttraction;
-
-        if (state.active !== wasActive) {
-          if (state.active) {
-            el.classList.add("proximity-active");
-          } else {
-            el.classList.remove("proximity-active");
+          if (!isInside || mx < 0 || my < 0) {
+            state.targetTx = 0;
+            state.targetTy = 0;
+            state.targetGlow = 0;
+            state.targetShadow = 0;
+            state.targetTrailGlow = 0;
+            state.active = false;
+            continue;
           }
+
+          const nx = ((mx - rect.left) / rect.width) * 2 - 1;
+          const ny = ((my - rect.top) / rect.height) * 2 - 1;
+          const centerDistance = Math.min(1, Math.hypot(nx, ny));
+          const strength = 1 - centerDistance * 0.45;
+          const parsedStrength = Number.parseFloat(el.dataset.proximityStrength ?? "1");
+          const moveStrength = Number.isFinite(parsedStrength) ? parsedStrength : 1;
+          const tx = nx * 6 * strength * moveStrength;
+          const ty = ny * 6 * strength * moveStrength;
+          const localX = clamp(((mx - rect.left) / rect.width) * 100, 0, 100);
+          const localY = clamp(((my - rect.top) / rect.height) * 100, 0, 100);
+
+          el.style.setProperty("--mx", `${localX.toFixed(1)}%`);
+          el.style.setProperty("--my", `${localY.toFixed(1)}%`);
+
+          state.targetTx = tx;
+          state.targetTy = ty;
+          state.targetGlow = 0.09 + strength * 0.14;
+          state.targetShadow = 0.04 + strength * 0.1;
+          state.targetTrailX = localX;
+          state.targetTrailY = localY;
+          state.targetTrailGlow = (0.2 + strength * 0.28) * Math.min(1.2, moveStrength);
+          state.active = true;
+          continue;
         }
+
+        // Touch/mobile-friendly fallback: subtle scroll-velocity and viewport-center responsiveness.
+        const viewportCenterY = window.innerHeight * 0.5;
+        const elementCenterY = rect.top + rect.height * 0.5;
+        const proximity = 1 - Math.min(1, Math.abs((elementCenterY - viewportCenterY) / (window.innerHeight * 0.7)));
+        const mobileMotionScale = hasCoarsePointer ? 0.72 : 1;
+        const impulse = clamp(scrollVelocity * 16, -26, 26);
+        const ty = clamp(impulse * 0.2, -9, 9) * (0.35 + proximity * 0.65) * mobileMotionScale;
+        const tx = clamp(((elementCenterY - viewportCenterY) / window.innerHeight) * -ty * 0.18, -2.5, 2.5) * mobileMotionScale;
+
+        state.targetTx = tx;
+        state.targetTy = ty;
+        state.targetGlow = 0;
+        state.targetShadow = 0;
+        state.targetTrailGlow = 0;
+        state.active = Math.abs(tx) > 0.02 || Math.abs(ty) > 0.02;
+      }
+
+      for (const el of targets) {
+        const state = getState(el);
+        const leadSmoothing = state.active ? 0.32 : 0.12;
+        const trailSmoothing = state.active ? 0.065 : 0.028;
+
+        state.tx += (state.targetTx - state.tx) * leadSmoothing;
+        state.ty += (state.targetTy - state.ty) * leadSmoothing;
+        state.glow += (state.targetGlow - state.glow) * leadSmoothing;
+        state.shadow += (state.targetShadow - state.shadow) * leadSmoothing;
+        state.trailX += (state.targetTrailX - state.trailX) * trailSmoothing;
+        state.trailY += (state.targetTrailY - state.trailY) * trailSmoothing;
+        state.trailGlow += (state.targetTrailGlow - state.trailGlow) * trailSmoothing;
 
         el.style.setProperty("--tx", `${state.tx.toFixed(2)}px`);
         el.style.setProperty("--ty", `${state.ty.toFixed(2)}px`);
-        el.style.setProperty("--glow-opacity", state.glow.toFixed(3));
-        el.style.setProperty("--shadow-alpha", state.shadow.toFixed(3));
-        el.style.setProperty("--mx", `${state.trailX.toFixed(1)}%`);
-        el.style.setProperty("--my", `${state.trailY.toFixed(1)}%`);
-        el.style.setProperty("--mx-trail", `${state.trailX.toFixed(1)}%`);
-        el.style.setProperty("--my-trail", `${state.trailY.toFixed(1)}%`);
-        el.style.setProperty("--trail-opacity", state.trailGlow.toFixed(3));
+        el.style.setProperty("--glow-opacity", `${Math.max(0, state.glow).toFixed(2)}`);
+        el.style.setProperty("--shadow-alpha", `${Math.max(0, state.shadow).toFixed(2)}`);
+        el.style.setProperty("--mx-trail", `${clamp(state.trailX, 0, 100).toFixed(1)}%`);
+        el.style.setProperty("--my-trail", `${clamp(state.trailY, 0, 100).toFixed(1)}%`);
+        el.style.setProperty("--trail-opacity", `${Math.max(0, state.trailGlow).toFixed(2)}`);
+
+        const resting =
+          Math.abs(state.tx) < 0.03 &&
+          Math.abs(state.ty) < 0.03 &&
+          state.glow < 0.01 &&
+          state.shadow < 0.01 &&
+          state.trailGlow < 0.01;
+
+        if (!resting) {
+          hasActiveMotion = true;
+          el.classList.add("proximity-active");
+        } else {
+          el.classList.remove("proximity-active");
+        }
       }
 
-      if (targets.length > 0) {
+      if (hasActiveMotion) {
+        const usePointerAttraction = supportsInteractiveHover || hasMouseInput;
+        if (!usePointerAttraction) {
+          scrollVelocity *= 0.88;
+          if (Math.abs(scrollVelocity) < 0.005) {
+            scrollVelocity = 0;
+          }
+        }
         raf = window.requestAnimationFrame(update);
       }
     };
 
-    const scheduleUpdate = () => {
-      if (!raf) raf = window.requestAnimationFrame(update);
+    const queueUpdate = () => {
+      if (!raf) {
+        raf = window.requestAnimationFrame(update);
+      }
     };
 
-    const onMouseMove = (e: MouseEvent) => {
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerType && e.pointerType !== "mouse") return;
+      hasMouseInput = true;
       mx = e.clientX;
       my = e.clientY;
-      scheduleUpdate();
+      queueUpdate();
     };
 
-    const onScroll = () => {
-      const now = performance.now();
-      const dt = now - lastScrollTs;
-      const dy = window.scrollY - lastScrollY;
-      scrollVelocity = dt > 0 ? Math.abs(dy / dt) : 0;
-      lastScrollY = window.scrollY;
-      lastScrollTs = now;
-      scheduleUpdate();
-    };
-
-    const onMouseLeave = () => {
+    const onPointerLeave = () => {
       mx = -9999;
       my = -9999;
-      scheduleUpdate();
+      queueUpdate();
     };
 
-    window.addEventListener("mousemove", onMouseMove, { passive: true });
-    window.addEventListener("scroll", onScroll, { passive: true });
-    document.documentElement.addEventListener("mouseleave", onMouseLeave);
+    const onScrollOrResize = () => {
+      const usePointerAttraction = supportsInteractiveHover || hasMouseInput;
+      if (!usePointerAttraction) {
+        const now = performance.now();
+        const dy = window.scrollY - lastScrollY;
+        const dt = Math.max(1, now - lastScrollTs);
+        const instantVelocity = dy / dt;
+        scrollVelocity = scrollVelocity * 0.55 + instantVelocity * 0.45;
+        lastScrollY = window.scrollY;
+        lastScrollTs = now;
+      }
+      queueUpdate();
+    };
 
-    scheduleUpdate();
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    window.addEventListener("pointerleave", onPointerLeave);
+    window.addEventListener("blur", onPointerLeave);
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", onScrollOrResize);
 
     return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("scroll", onScroll);
-      document.documentElement.removeEventListener("mouseleave", onMouseLeave);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerleave", onPointerLeave);
+      window.removeEventListener("blur", onPointerLeave);
+      window.removeEventListener("scroll", onScrollOrResize);
+      window.removeEventListener("resize", onScrollOrResize);
       if (raf) window.cancelAnimationFrame(raf);
-      getTargets().forEach(hardResetTarget);
-      states.clear();
+      for (const el of states.keys()) {
+        hardResetTarget(el);
+      }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   return null;

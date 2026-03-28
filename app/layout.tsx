@@ -1,16 +1,12 @@
 import type { Metadata } from "next";
-import { Inter, Outfit } from "next/font/google";
+import { Lexend_Deca } from "next/font/google";
 import ProximityEffects from "@/components/proximity-effects";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const lexendDeca = Lexend_Deca({
+  variable: "--font-lexend-deca",
   subsets: ["latin", "latin-ext"],
-});
-
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
@@ -18,7 +14,9 @@ export const metadata: Metadata = {
   title: "Réz körút | Rézfúvós szeptett",
   description: "Réz körút – Budapesti rézfúvós szeptett. Megállítjuk az időt.",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/rolunk-logo.png",
   },
   openGraph: {
     title: "Réz körút | Rézfúvós szeptett",
@@ -27,6 +25,20 @@ export const metadata: Metadata = {
     siteName: "Réz körút",
     locale: "hu_HU",
     type: "website",
+    images: [
+      {
+        url: "/hero.jpg",
+        width: 2048,
+        height: 1365,
+        alt: "Réz körút – Budapesti rézfúvós szeptett",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Réz körút | Rézfúvós szeptett",
+    description: "Budapesti rézfúvós szeptett. Megállítjuk az időt.",
+    images: ["/hero.jpg"],
   },
 };
 
@@ -37,7 +49,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="hu" className="dark">
-      <body className={`${inter.variable} ${outfit.variable}`}>
+      <body className={lexendDeca.variable}>
         <ProximityEffects />
         {children}
       </body>

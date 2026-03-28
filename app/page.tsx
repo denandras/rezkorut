@@ -1,45 +1,120 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import BottomNav from "@/components/bottom-nav";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
-  IconArrowForward,
   IconInstagram,
   IconYouTube,
   IconFacebook,
-  IconExternalLink,
+  IconSpotify,
+  IconAppleMusic,
+  IconDeezer,
+  IconTidal,
 } from "@/components/icons";
-import Link from "next/link";
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
+type PlatformLink = {
+  kind: "spotify" | "apple-music" | "deezer" | "tidal";
+  label: string;
+  href: string;
+};
+
+type Release = {
+  badge: string;
+  title: string;
+  description: string;
+  detailHref: string;
+  platforms: PlatformLink[];
+};
+
+const terezPlatforms: PlatformLink[] = [
+  {
+    kind: "spotify",
+    label: "Spotify",
+    href: "https://open.spotify.com/album/6NHNHkieFvxGOOyEwuz9YP?si=LJ-qyQFBTeW9RkWmKVwgIQ",
+  },
+  {
+    kind: "apple-music",
+    label: "Apple Music",
+    href: "https://music.apple.com/hu/album/te-r%C3%A9z-k%C3%B6r%C3%BAt/1848370488",
+  },
+  {
+    kind: "deezer",
+    label: "Deezer",
+    href: "https://link.deezer.com/s/31roFldFv9CTyMYReeYK2",
+  },
+  {
+    kind: "tidal",
+    label: "Tidal",
+    href: "https://tidal.com/album/469100543/u",
+  },
+];
+
+const madmanPlatforms: PlatformLink[] = [
+  {
+    kind: "spotify",
+    label: "Spotify",
+    href: "https://open.spotify.com/search/Madman's%20Treasure%20Szab%C3%B3%20Benedek",
+  },
+  {
+    kind: "deezer",
+    label: "Deezer",
+    href: "https://link.deezer.com/s/32PR1xWdio8vHcy2RWQei",
+  },
+  {
+    kind: "tidal",
+    label: "Tidal",
+    href: "https://tidal.com/album/507948509/u",
+  },
+];
+
+function PlatformIcon({ kind }: { kind: PlatformLink["kind"] }) {
+  if (kind === "spotify") return <IconSpotify className="size-4" />;
+  if (kind === "apple-music") return <IconAppleMusic className="size-4" />;
+  if (kind === "deezer") return <IconDeezer className="size-4" />;
+  return <IconTidal className="size-4" />;
+}
+
+function platformAccent(kind: PlatformLink["kind"]) {
+  if (kind === "spotify") {
+    return "text-[#1ED760] border-[#1ED760]/60 bg-[#1ED760]/10 hover:bg-[#1ED760]/20";
+  }
+  if (kind === "apple-music") {
+    return "text-[#FC3C44] border-[#FC3C44]/60 bg-[#FC3C44]/10 hover:bg-[#FC3C44]/20";
+  }
+  if (kind === "deezer") {
+    return "text-[#A238FF] border-[#A238FF]/60 bg-[#A238FF]/10 hover:bg-[#A238FF]/20";
+  }
+  return "text-[#00FFFF] border-[#00FFFF]/60 bg-[#00FFFF]/10 hover:bg-[#00FFFF]/20";
+}
+
+const releases: Release[] = [
+  {
+    badge: "Kislemez",
+    title: "Szabó Benedek – Madman's Treasure",
+    description:
+      "A mű szerzője Szabó Benedek, 2024-ben éppen október 28-án elhunyt tubásunk, barátunk; ezzel a felvétellel az ő képzelőereje és szíve előtt tisztelgünk.",
+    detailHref: "/madmans-treasure",
+    platforms: madmanPlatforms,
+  },
+  {
+    badge: "Kislemez",
+    title: "Szabó Benedek – (Te)Réz körút",
+    description:
+      "Egy játékos, szatirikus utazás Budapest 4-6-os villamosának vonalán rézfúvós szeptettünktől.",
+    detailHref: "/terez-korut",
+    platforms: terezPlatforms,
+  },
+];
+
 export default function HomePage() {
+  const router = useRouter();
   const heroRef = useRef<HTMLElement | null>(null);
-  const [headerProgress, setHeaderProgress] = useState(0);
-
-  useEffect(() => {
-    const update = () => {
-      const heroHeight =
-        heroRef.current?.offsetHeight ?? Math.round(window.innerHeight * 0.8);
-      const start = Math.max(24, heroHeight - 220);
-      const end = Math.max(start + 1, heroHeight - 120);
-      const progress = clamp(
-        (window.scrollY - start) / (end - start),
-        0,
-        1,
-      );
-      setHeaderProgress(progress);
-    };
-
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, []);
 
   useEffect(() => {
     const nodes = Array.from(
@@ -71,37 +146,46 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background-dark text-neutral-100">
-      {/* Sticky header fades in on scroll */}
-      <header
-        className="fixed top-0 right-0 left-0 z-50 flex items-center justify-between border-b border-neutral-border bg-background-dark/80 px-6 py-3 backdrop-blur-md"
-        style={{
-          opacity: headerProgress,
-          transform: `translateY(${Math.round((1 - headerProgress) * -14)}px)`,
-          pointerEvents: headerProgress > 0.08 ? "auto" : "none",
-        }}
-      >
-        <span className="font-display text-lg font-bold tracking-tight uppercase text-primary">
-          Réz körút
-        </span>
-        <span className="font-display text-xs font-semibold tracking-[0.18em] text-neutral-400 uppercase">
-          Rézfúvós szeptett
-        </span>
-      </header>
-
       <main className="flex-1 pb-24">
         {/* Hero */}
         <section
           ref={heroRef}
-          className="relative flex min-h-[72dvh] w-full flex-col justify-end overflow-hidden"
+          className="relative flex w-full flex-col justify-end overflow-hidden"
+          style={{ aspectRatio: "2048 / 1365", maxHeight: "88dvh", minHeight: "320px" }}
         >
-          {/* Atmospheric gradient backdrop */}
-          <div className="absolute inset-0 bg-gradient-to-br from-neutral-dark via-background-dark to-background-dark" />
-          {/* Copper glow accent */}
+          {/* Hero image */}
           <div
-            className="absolute inset-0 opacity-30"
+            className="absolute inset-0"
+            style={{
+              WebkitMaskImage:
+                "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 86%, rgba(0,0,0,0.35) 95%, rgba(0,0,0,0) 100%)",
+              maskImage:
+                "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 86%, rgba(0,0,0,0.35) 95%, rgba(0,0,0,0) 100%)",
+            }}
+          >
+            <Image
+              src="/hero.jpg"
+              alt="Réz körút"
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover object-center"
+            />
+          </div>
+          {/* Dark overlay: keep image center clearer, start fade lower */}
+          <div
+            className="absolute inset-0"
             style={{
               background:
-                "radial-gradient(ellipse 80% 60% at 30% 60%, rgba(196,120,64,0.22) 0%, transparent 70%)",
+                "linear-gradient(to top, rgba(11,26,16,0.9) 0%, rgba(11,26,16,0.88) 18%, rgba(11,26,16,0.62) 34%, rgba(11,26,16,0.28) 50%, rgba(11,26,16,0.1) 63%, rgba(11,26,16,0.02) 76%, rgba(11,26,16,0) 100%)",
+            }}
+          />
+          {/* Champagne glow */}
+          <div
+            className="absolute inset-0 opacity-20"
+            style={{
+              background:
+                "radial-gradient(ellipse 80% 60% at 30% 60%, rgba(230,213,163,0.3) 0%, transparent 70%)",
             }}
           />
 
@@ -111,21 +195,19 @@ export default function HomePage() {
               style={
                 {
                   "--reveal-delay": "60ms",
-                  top: `${Math.round(headerProgress * -22)}px`,
-                  opacity: 1 - headerProgress * 0.35,
                 } as React.CSSProperties
               }
               className="relative"
             >
-              <div className="mb-3 flex items-center gap-3">
-                <div className="h-px w-10 bg-primary" />
-                <p className="font-display text-xs font-semibold tracking-[0.22em] text-primary uppercase">
-                  Rézfúvós szeptett
-                </p>
-              </div>
               <h1 className="font-display mb-4 text-6xl font-bold leading-none tracking-tighter text-white md:text-8xl">
                 Réz körút
               </h1>
+              <div className="mb-3 flex items-center gap-3">
+                <div className="h-px w-10 bg-primary" />
+                <p className="font-display text-xs font-bold tracking-[0.22em] text-primary uppercase md:text-sm">
+                  Rézfúvós szeptett
+                </p>
+              </div>
               <p
                 className="font-display text-2xl font-light italic text-neutral-300 md:text-3xl"
                 data-reveal
@@ -146,140 +228,51 @@ export default function HomePage() {
           </div>
 
           <div className="space-y-4">
-            {/* (Te)Réz körút */}
-            <div
-              data-reveal
-              style={{ "--reveal-delay": "80ms" } as React.CSSProperties}
-            >
-              <a
-                href="https://open.spotify.com/album/6NHNHkieFvxGOOyEwuz9YP?si=LJ-qyQFBTeW9RkWmKVwgIQ"
-                target="_blank"
-                rel="noreferrer"
-                className="interactive-surface group block rounded-xl border border-neutral-border bg-neutral-dark/40 p-5 transition-all hover:border-primary/40 hover:bg-neutral-dark"
+            {releases.map((release, index) => (
+              <article
+                key={release.title}
+                data-reveal
+                style={{
+                  "--reveal-delay": `${80 + index * 80}ms`,
+                } as React.CSSProperties}
+                className="interactive-surface cursor-pointer rounded-xl border border-neutral-border bg-neutral-dark/40 p-5 transition-all hover:border-primary/40 hover:bg-neutral-dark"
                 data-proximity
                 data-proximity-strength="2.1"
+                role="link"
+                tabIndex={0}
+                aria-label={`${release.title} részletei`}
+                onClick={() => router.push(release.detailHref)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    router.push(release.detailHref);
+                  }
+                }}
               >
                 <p className="mb-1 text-xs font-bold tracking-widest text-primary uppercase">
-                  Legújabb lemezünk
+                  {release.badge}
                 </p>
-                <h3 className="font-display mb-1 text-xl font-semibold">
-                  Szabó Benedek – (Te)Réz körút
-                </h3>
-                <p className="mb-3 text-sm text-neutral-300">
-                  Egy játékos, szatirikus utazás Budapest 4–6-os villamosának vonalán rézfúvós szeptettünktől.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <a
-                    href="https://open.spotify.com/album/6NHNHkieFvxGOOyEwuz9YP?si=LJ-qyQFBTeW9RkWmKVwgIQ"
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/20"
-                  >
-                    Spotify
-                    <IconExternalLink className="size-3" />
-                  </a>
-                  <a
-                    href="https://music.apple.com/hu/album/te-r%C3%A9z-k%C3%B6r%C3%BAt/1848370488"
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/20"
-                  >
-                    Apple Music
-                    <IconExternalLink className="size-3" />
-                  </a>
-                  <a
-                    href="https://link.deezer.com/s/31roFldFv9CTyMYReeYK2"
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/20"
-                  >
-                    Deezer
-                    <IconExternalLink className="size-3" />
-                  </a>
-                  <a
-                    href="https://tidal.com/album/469100543/u"
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/20"
-                  >
-                    Tidal
-                    <IconExternalLink className="size-3" />
-                  </a>
+                <h3 className="font-display mb-2 text-xl font-semibold">{release.title}</h3>
+                <p className="mb-4 text-sm text-neutral-300">{release.description}</p>
+
+                <div className="flex items-center gap-2">
+                  {release.platforms.map((platform) => (
+                    <a
+                      key={`${release.title}-${platform.label}`}
+                      href={platform.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={platform.label}
+                      title={platform.label}
+                      onClick={(event) => event.stopPropagation()}
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded-full border transition-colors ${platformAccent(platform.kind)}`}
+                    >
+                      <PlatformIcon kind={platform.kind} />
+                    </a>
+                  ))}
                 </div>
-              </a>
-            </div>
-
-            {/* Madman's Treasure */}
-            <div
-              data-reveal
-              style={{ "--reveal-delay": "160ms" } as React.CSSProperties}
-            >
-              <div
-                className="interactive-surface group block rounded-xl border border-neutral-border bg-neutral-dark/40 p-5 transition-all hover:border-primary/40 hover:bg-neutral-dark"
-                data-proximity
-                data-proximity-strength="2.1"
-              >
-                <p className="mb-1 text-xs font-bold tracking-widest text-primary uppercase">
-                  Videó
-                </p>
-                <h3 className="font-display mb-1 text-xl font-semibold">
-                  Szabó Benedek – Madman's Treasure
-                </h3>
-                <p className="mb-3 text-sm text-neutral-300">
-                  Egy játékos, szatirikus utazás Budapest 4–6-os villamosának vonalán rézfúvós szeptettünktől.
-                  A mű szerzője Szabó Benedek, 2024-ben éppen október 28-án elhunyt tubásunk, barátunk;
-                  ezzel a felvétellel az ő képzelőereje, és szíve előtt tisztelgünk.
-                  Elérhető minden zenemegosztó platformon.
-                </p>
-                <a
-                  href="https://youtu.be/WrrN445yFsw"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/20"
-                >
-                  <IconYouTube className="size-3.5" />
-                  Megnézem YouTube-on
-                  <IconArrowForward className="size-3" />
-                </a>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Quick links */}
-        <section className="px-6 pb-4 md:px-12">
-          <div
-            className="grid grid-cols-2 gap-3 sm:grid-cols-3"
-            data-reveal
-          >
-            <Link
-              href="/esemenyek"
-              className="interactive-surface flex items-center justify-between rounded-xl border border-neutral-border bg-neutral-dark/30 px-4 py-4 transition-all hover:border-primary/30 hover:bg-neutral-dark"
-              data-proximity
-            >
-              <span className="font-display text-sm font-semibold">Események</span>
-              <IconArrowForward className="size-4 text-primary" />
-            </Link>
-            <Link
-              href="/media"
-              className="interactive-surface flex items-center justify-between rounded-xl border border-neutral-border bg-neutral-dark/30 px-4 py-4 transition-all hover:border-primary/30 hover:bg-neutral-dark"
-              data-proximity
-            >
-              <span className="font-display text-sm font-semibold">Média</span>
-              <IconArrowForward className="size-4 text-primary" />
-            </Link>
-            <Link
-              href="/rolunk"
-              className="interactive-surface col-span-2 flex items-center justify-between rounded-xl border border-neutral-border bg-neutral-dark/30 px-4 py-4 transition-all hover:border-primary/30 hover:bg-neutral-dark sm:col-span-1"
-              data-proximity
-            >
-              <span className="font-display text-sm font-semibold">Rólunk</span>
-              <IconArrowForward className="size-4 text-primary" />
-            </Link>
+              </article>
+            ))}
           </div>
         </section>
 
@@ -314,10 +307,10 @@ export default function HomePage() {
               <IconFacebook className="size-5" />
             </a>
             <a
-              href="mailto:mail@rezkorut.hu"
+              href="mailto:rezkorut@gmail.com"
               className="text-sm text-neutral-400 transition-colors hover:text-primary"
             >
-              mail@rezkorut.hu
+              rezkorut@gmail.com
             </a>
           </div>
           <p className="text-xs text-neutral-500">

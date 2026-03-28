@@ -1,42 +1,27 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { IconDownload } from "@/components/icons";
 
-type GalleryImage = {
-  src: string;
-  alt: string;
+type MediaItem = {
+  id: string;
+  viewUrl: string;
+  downloadUrl: string;
 };
 
-const images: GalleryImage[] = [
-  { src: "/gallery/rezkorut_250309_013_szaloky_bela.jpg", alt: "Réz körút – 2025. március 9." },
-  { src: "/gallery/rezkorut_250309_017_szaloky_bela.jpg", alt: "Réz körút – 2025. március 9." },
-  { src: "/gallery/rezkorut_250309_033_szaloky_bela.jpg", alt: "Réz körút – 2025. március 9." },
-  { src: "/gallery/rezkorut_250309_058_szaloky_bela.jpg", alt: "Réz körút – 2025. március 9." },
-  { src: "/gallery/20250309_Rez_Korut_Fuvos_szeptett_Felvegi_Andrea_webes_8.jpg", alt: "Réz körút – 2025. március 9. (Felvégi Andrea)" },
-  { src: "/gallery/20250309_Rez_Korut_Fuvos_szeptett_Felvegi_Andrea_webes_9.jpg", alt: "Réz körút – 2025. március 9. (Felvégi Andrea)" },
-  { src: "/gallery/20250309_Rez_Korut_Fuvos_szeptett_Felvegi_Andrea_webes_10.jpg", alt: "Réz körút – 2025. március 9. (Felvégi Andrea)" },
-  { src: "/gallery/20250309_Rez_Korut_Fuvos_szeptett_Felvegi_Andrea_webes_11.jpg", alt: "Réz körút – 2025. március 9. (Felvégi Andrea)" },
-  { src: "/gallery/20250309_Rez_Korut_Fuvos_szeptett_Felvegi_Andrea_webes_12.jpg", alt: "Réz körút – 2025. március 9. (Felvégi Andrea)" },
-  { src: "/gallery/20250309_Rez_Korut_Fuvos_szeptett_Felvegi_Andrea_webes_16.jpg", alt: "Réz körút – 2025. március 9. (Felvégi Andrea)" },
-  { src: "/gallery/20250309_Rez_Korut_Fuvos_szeptett_Felvegi_Andrea_webes_34.jpg", alt: "Réz körút – 2025. március 9. (Felvégi Andrea)" },
-  { src: "/gallery/20250309_Rez_Korut_Fuvos_szeptett_Felvegi_Andrea_webes_40.jpg", alt: "Réz körút – 2025. március 9. (Felvégi Andrea)" },
-  { src: "/gallery/20251012_200830-238.jpg", alt: "Réz körút – 2025. október 12." },
-  { src: "/gallery/20251012_201452-254.jpg", alt: "Réz körút – 2025. október 12." },
-  { src: "/gallery/20251012_201844-263.jpg", alt: "Réz körút – 2025. október 12." },
-  { src: "/gallery/20251012_202851-286.jpg", alt: "Réz körút – 2025. október 12." },
-  { src: "/gallery/ml_241202_013.jpg", alt: "Réz körút – 2024. december" },
-  { src: "/gallery/ml_241202_018.jpg", alt: "Réz körút – 2024. december" },
-  { src: "/gallery/ml_241202_022.jpg", alt: "Réz körút – 2024. december" },
-  { src: "/gallery/ml_241202_032.jpg", alt: "Réz körút – 2024. december" },
-  { src: "/gallery/ml_241202_036.jpg", alt: "Réz körút – 2024. december" },
-  { src: "/gallery/20250309_145043.jpg", alt: "Réz körút – 2025. március 9." },
-  { src: "/gallery/IMG_9905.jpg", alt: "Réz körút" },
-  { src: "/gallery/2024_05_08-Diplomakoncert_fotos_038.jpg", alt: "Réz körút – 2024. Diplomakoncert" },
-];
+type MediaGalleryProps = {
+  items: MediaItem[];
+  emptyMessage?: string;
+};
 
-export default function MediaGallery() {
+export default function MediaGallery({
+  items,
+  emptyMessage = "A galéria jelenleg üres.",
+}: MediaGalleryProps) {
+  const resolved = items;
   const [loadedIds, setLoadedIds] = useState<Record<string, true>>({});
+  const [failedIds, setFailedIds] = useState<Record<string, true>>({});
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const galleryRef = useRef<HTMLDivElement | null>(null);
 
@@ -61,9 +46,7 @@ export default function MediaGallery() {
 
     const raf = window.requestAnimationFrame(() => {
       nodes.forEach((node) => {
-        if (!node.classList.contains("is-visible")) {
-          observer.observe(node);
-        }
+        if (!node.classList.contains("is-visible")) observer.observe(node);
       });
     });
 
@@ -71,9 +54,8 @@ export default function MediaGallery() {
       window.cancelAnimationFrame(raf);
       observer.disconnect();
     };
-  }, []);
+  }, [resolved.length]);
 
-  // Close lightbox on Escape
   useEffect(() => {
     if (!lightboxSrc) return;
     const onKey = (e: KeyboardEvent) => {
@@ -85,44 +67,94 @@ export default function MediaGallery() {
 
   return (
     <>
+      {resolved.length === 0 && (
+        <div className="rounded-xl border border-neutral-border bg-neutral-dark/40 p-6 text-sm text-neutral-300">
+          {emptyMessage}
+        </div>
+      )}
       <div
         ref={galleryRef}
-        className="columns-1 gap-3 sm:columns-2 lg:columns-3"
+        className="columns-1 gap-4 sm:columns-2 lg:columns-3"
       >
-        {images.map((img, index) => {
-          const isLoaded = !!loadedIds[img.src];
+        {resolved.map((item, index) => {
+          const isLoaded = !!loadedIds[item.id];
+          const hasFailed = !!failedIds[item.id];
+          const downloadVisibilityClass = isLoaded
+            ? "opacity-100 pointer-events-auto md:opacity-0 md:pointer-events-none md:group-hover:pointer-events-auto md:group-hover:opacity-100"
+            : "opacity-0 pointer-events-none";
           const prioritized = index < 6;
 
           return (
             <div
-              key={img.src}
+              key={item.id}
+              className="mb-4 break-inside-avoid"
               data-reveal
-              style={{ "--reveal-delay": `${Math.min(index * 40, 400)}ms` } as React.CSSProperties}
-              className="group mb-3 block cursor-pointer break-inside-avoid overflow-hidden rounded-lg bg-neutral-dark/40"
-              onClick={() => setLightboxSrc(img.src)}
+              style={{ "--reveal-delay": `${80 + (index % 12) * 55}ms` } as React.CSSProperties}
             >
-              <div className="relative aspect-[4/3] w-full overflow-hidden">
+              <article
+                className={`interactive-surface group relative cursor-pointer overflow-hidden rounded-xl transition-all ${
+                  isLoaded
+                    ? "border border-neutral-border bg-neutral-dark/40 hover:border-primary/30 hover:bg-neutral-dark"
+                    : "border border-transparent bg-transparent"
+                }`}
+                data-proximity
+                data-proximity-strength="2.1"
+                onClick={() => isLoaded && setLightboxSrc(item.viewUrl)}
+              >
+                {!isLoaded && (
+                  <div className="absolute inset-0 animate-pulse bg-neutral-dark/70" />
+                )}
+
                 <Image
-                  src={img.src}
-                  alt={img.alt}
-                  fill
-                  className={`object-cover transition-all duration-700 group-hover:scale-[1.03] ${
+                  src={item.viewUrl}
+                  alt={`Réz körút – ${index + 1}`}
+                  width={1600}
+                  height={1200}
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  loading={prioritized ? "eager" : "lazy"}
+                  fetchPriority={prioritized ? "high" : "auto"}
+                  onLoad={() =>
+                    setLoadedIds((prev) =>
+                      prev[item.id] ? prev : { ...prev, [item.id]: true },
+                    )
+                  }
+                  onError={() => {
+                    setFailedIds((prev) =>
+                      prev[item.id] ? prev : { ...prev, [item.id]: true },
+                    );
+                    setLoadedIds((prev) =>
+                      prev[item.id] ? prev : { ...prev, [item.id]: true },
+                    );
+                  }}
+                  className={`block h-auto w-full object-cover transition-opacity duration-300 ${
                     isLoaded ? "opacity-100" : "opacity-0"
                   }`}
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  priority={prioritized}
-                  onLoad={() => setLoadedIds((prev) => ({ ...prev, [img.src]: true }))}
                 />
-                {!isLoaded && (
-                  <div className="absolute inset-0 animate-pulse bg-neutral-dark" />
+
+                {hasFailed && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-neutral-dark/85 p-4 text-center">
+                    <p className="text-sm text-neutral-400">Nem sikerült betölteni.</p>
+                  </div>
                 )}
-              </div>
+
+                {!hasFailed && (
+                  <a
+                    href={item.downloadUrl}
+                    download
+                    onClick={(e) => e.stopPropagation()}
+                    className={`absolute top-3 right-3 inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-background-dark/70 px-2.5 py-2 text-xs font-semibold text-primary backdrop-blur-sm transition-all duration-200 hover:bg-background-dark/85 ${downloadVisibilityClass}`}
+                    aria-label="Letöltés"
+                    title="Letöltés"
+                  >
+                    <IconDownload className="size-3.5" />
+                  </a>
+                )}
+              </article>
             </div>
           );
         })}
       </div>
 
-      {/* Lightbox */}
       {lightboxSrc && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"

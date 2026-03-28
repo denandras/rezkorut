@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { IconHome, IconCalendar, IconCamera, IconUsers, IconMusicNote } from "@/components/icons";
+import { IconHome, IconCalendar, IconCamera, IconUsers } from "@/components/icons";
 
-type NavItem = "home" | "esemenyek" | "media" | "rolunk" | "cv" | "none";
+type NavItem = "home" | "esemenyek" | "media" | "rolunk" | "none";
 
 type BottomNavProps = {
   active: NavItem;
@@ -12,17 +12,7 @@ const itemBase = "flex h-full flex-col items-center justify-center gap-0.5 trans
 export default function BottomNav({ active }: BottomNavProps) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-border bg-neutral-dark/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
-      <div className="mx-auto grid h-16 w-full max-w-2xl grid-cols-5">
-        <Link
-          href="/cv"
-          className={`${itemBase} ${
-            active === "cv" ? "text-primary" : "text-neutral-400 hover:text-primary"
-          }`}
-        >
-          <IconMusicNote className="size-5" />
-          <span className="text-[10px] leading-none">CV</span>
-        </Link>
-
+      <div className="mx-auto grid h-16 w-full max-w-2xl grid-cols-4">
         <Link
           href="/esemenyek"
           className={`${itemBase} ${

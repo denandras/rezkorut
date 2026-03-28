@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-primary: #c47840;
-  --color-background-light: #f8f6f2;
-  --color-background-dark: #080706;
-  --color-neutral-dark: #1a130a;
-  --color-neutral-border: #2c1f0e;
-  --color-charcoal: #211508;
-  --font-sans: var(--font-inter);
+  --color-primary: #e6d5a3;
+  --color-background-light: #f5f0e4;
+  --color-background-dark: #0b1a10;
+  --color-neutral-dark: #0e2016;
+  --color-neutral-border: #1a3828;
+  --color-charcoal: #06100a;
+  --font-sans: var(--font-lexend-deca);
 }
 
 html {
@@ -16,14 +16,14 @@ html {
 
 body {
   min-height: max(884px, 100dvh);
-  background: #080706;
+  background: #0b1a10;
   color: #f5f5f5;
-  font-family: var(--font-inter), sans-serif;
+  font-family: var(--font-lexend-deca), sans-serif;
   overflow-x: clip;
 }
 
 .font-display {
-  font-family: var(--font-outfit), var(--font-inter), sans-serif;
+  font-family: var(--font-lexend-deca), sans-serif;
 }
 
 .interactive-surface {
@@ -40,7 +40,7 @@ body {
   }
 }
 
-@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+@media (any-hover: hover) and (prefers-reduced-motion: no-preference) {
   .interactive-surface {
     transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0)
       translateY(var(--reveal-y, 0px))
@@ -57,9 +57,9 @@ body {
     border-radius: inherit;
     background: radial-gradient(
       240px circle at var(--mx, 50%) var(--my, 50%),
-      rgba(196, 120, 64, 0.14),
-      rgba(196, 120, 64, 0.06) 24%,
-      rgba(196, 120, 64, 0) 62%
+      rgba(230, 213, 163, 0.14),
+      rgba(230, 213, 163, 0.06) 24%,
+      rgba(230, 213, 163, 0) 62%
     );
     opacity: var(--glow-opacity, 0);
     transition: opacity 820ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -73,9 +73,9 @@ body {
     border-radius: inherit;
     background: radial-gradient(
       190px circle at var(--mx-trail, 50%) var(--my-trail, 50%),
-      rgba(196, 120, 64, 0.42),
-      rgba(196, 120, 64, 0.2) 30%,
-      rgba(196, 120, 64, 0) 74%
+      rgba(230, 213, 163, 0.42),
+      rgba(230, 213, 163, 0.2) 30%,
+      rgba(230, 213, 163, 0) 74%
     );
     opacity: var(--trail-opacity, 0);
     filter: blur(1px);
@@ -97,6 +97,19 @@ body {
   .interactive-surface[data-proximity-no-glow="true"]::before,
   .interactive-surface[data-proximity-no-glow="true"]::after {
     content: none;
+  }
+
+  /* [data-reveal] sets 900ms transition + reveal-delay that overrides the above at equal
+     specificity. Reset it to fast hover transitions once the reveal is complete. */
+  .interactive-surface[data-reveal].is-visible {
+    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 820ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: 0ms;
+  }
+
+  .interactive-surface.proximity-active[data-reveal].is-visible {
+    transition-duration: 160ms, 220ms;
+    transition-delay: 0ms;
   }
 }
 

@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Az oldal nem található – Réz körút",
+  description: "A keresett oldal nem létezik.",
+  robots: { index: false, follow: false },
+};
 
 export default function NotFound() {
   return (
