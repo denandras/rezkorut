@@ -29,7 +29,7 @@ export default function CvPage() {
         <p className="mt-3 text-neutral-400">Hamarosan…</p>
       </main>
 
-      <BottomNav active="cv" />
+      <BottomNav active="none" />
     </div>
   );
 }
