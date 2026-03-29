@@ -27,12 +27,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
-      url: "https://rezkorut.hu/cv",
-      lastModified: new Date(),
-      changeFrequency: "yearly",
-      priority: 0.5,
-    },
-    {
       url: "https://rezkorut.hu/terez-korut",
       lastModified: new Date(),
       changeFrequency: "yearly",

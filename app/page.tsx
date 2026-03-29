@@ -150,8 +150,8 @@ export default function HomePage() {
         {/* Hero */}
         <section
           ref={heroRef}
-          className="relative flex w-full flex-col justify-end overflow-hidden"
-          style={{ aspectRatio: "2048 / 1365", maxHeight: "88dvh", minHeight: "max(82dvh, 320px)" }}
+          className="relative flex w-full flex-col justify-end overflow-hidden md:min-h-[max(82dvh,320px)]"
+          style={{ aspectRatio: "2048 / 1365", maxHeight: "88dvh" }}
         >
           {/* Hero image */}
           <div
