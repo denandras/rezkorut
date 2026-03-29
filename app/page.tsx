@@ -189,7 +189,7 @@ export default function HomePage() {
             }}
           />
 
-          <div className="relative z-10 px-6 pb-14 md:px-12">
+          <div className="absolute bottom-[20%] left-0 right-0 z-10 px-6 md:static md:bottom-auto md:pb-14 md:px-12">
             <div
               data-reveal
               style={
