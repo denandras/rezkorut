@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import BottomNav from "@/components/bottom-nav";
 
 const SESSION_KEY = "rezkorut-intern-auth";
 
@@ -14,7 +15,7 @@ const links = [
   },
   {
     title: "Kották",
-    description: "Felhő – kottafájlok",
+    description: "Felhő – kották",
     href: "https://storage.denandras.cloud/index.php/s/aB4iyD6jYP5x8Z3",
   },
   {
@@ -90,7 +91,8 @@ export default function InternPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background-dark px-6 py-16">
+    <div className="flex min-h-screen flex-col bg-background-dark px-6">
+      <div className="flex flex-1 flex-col items-center justify-center py-16 pb-32">
       <div className="w-full max-w-sm">
         <p className="font-display mb-1 text-xs font-bold tracking-[0.2em] text-primary uppercase">
           Réz körút
@@ -117,6 +119,8 @@ export default function InternPage() {
           ))}
         </div>
       </div>
+      </div>
+      <BottomNav active="none" />
     </div>
   );
 }

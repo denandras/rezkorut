@@ -189,7 +189,10 @@ export default function HomePage() {
             }}
           />
 
-          <div className="absolute bottom-[20%] left-0 right-0 z-10 px-6 md:static md:bottom-auto md:pb-14 md:px-12">
+        </section>
+
+        {/* Title block – flows below hero on mobile, overlaps it on desktop */}
+        <div className="relative z-10 px-6 pt-6 md:-mt-52 md:px-12 md:pb-14 md:pt-0">
             <div
               data-reveal
               style={
@@ -216,8 +219,7 @@ export default function HomePage() {
                 Megállítjuk az időt.
               </p>
             </div>
-          </div>
-        </section>
+        </div>
 
         {/* Latest releases */}
         <section className="px-6 py-12 md:px-12">

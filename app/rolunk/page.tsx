@@ -178,6 +178,11 @@ export default function RolunkPage() {
         </div>
       </main>
 
+      <div className="pb-24 pt-4 text-center">
+        <a href="/intern" className="text-xs text-neutral-600 hover:text-neutral-400 transition-colors">
+          Intern
+        </a>
+      </div>
       <BottomNav active="rolunk" />
     </div>
   );
