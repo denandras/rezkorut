@@ -35,7 +35,7 @@ const platforms: PlatformLink[] = [
   {
     kind: "spotify",
     label: "Spotify",
-    href: "https://open.spotify.com/search/Madman's%20Treasure%20Szab%C3%B3%20Benedek",
+    href: "https://open.spotify.com/album/23e0HuB65C52AKHq7WTJPe?si=Ef4ryVdiSo-SxQk4fHQIHQ",
   },
   {
     kind: "deezer",
