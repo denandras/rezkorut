@@ -75,7 +75,9 @@ function parseUpcomingConcertsMarkdown(raw: string): Concert[] {
     });
 }
 
-export async function getUpcomingConcerts(): Promise<Concert[] | null> {
+async function fetchConcertsMarkdown(
+  fileName: string,
+): Promise<Concert[] | null> {
   const cfg = getS4Config();
   const upcomingPrefixRaw = getS4UpcomingPrefix();
   if (!cfg || !upcomingPrefixRaw) return [];
@@ -108,8 +110,8 @@ export async function getUpcomingConcerts(): Promise<Concert[] | null> {
 
       for (const obj of list.Contents ?? []) {
         if (!obj.Key) continue;
-        const fileName = (obj.Key.split("/").pop() ?? "").toLowerCase();
-        if (fileName === "rezkorut-upcoming-concerts.md") {
+        const key = (obj.Key.split("/").pop() ?? "").toLowerCase();
+        if (key === fileName.toLowerCase()) {
           markdownKey = obj.Key;
           break;
         }
@@ -134,9 +136,17 @@ export async function getUpcomingConcerts(): Promise<Concert[] | null> {
     return parseUpcomingConcertsMarkdown(body);
   } catch (err) {
     console.error(
-      "[upcoming-concerts] Failed to fetch rezkorut-upcoming-concerts.md:",
+      `[upcoming-concerts] Failed to fetch ${fileName}:`,
       err instanceof Error ? `${err.name}: ${err.message}` : String(err),
     );
     return null;
   }
+}
+
+export async function getUpcomingConcerts(): Promise<Concert[] | null> {
+  return fetchConcertsMarkdown("rezkorut-upcoming-concerts.md");
+}
+
+export async function getArchivedConcerts(): Promise<Concert[] | null> {
+  return fetchConcertsMarkdown("rezkorut-archived-concerts.md");
 }

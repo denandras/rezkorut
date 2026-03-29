@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import BottomNav from "@/components/bottom-nav";
 import { IconCalendar, IconExternalLink } from "@/components/icons";
-import { getUpcomingConcerts, type Concert } from "@/lib/upcoming-concerts";
+import { getUpcomingConcerts, getArchivedConcerts, type Concert } from "@/lib/upcoming-concerts";
 
 export const metadata: Metadata = {
   title: "Események – Réz körút",
@@ -19,146 +19,6 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
-
-const pastConcerts: Concert[] = [
-  {
-    date: "2025. október 12.",
-    time: "19:00",
-    location: "Budapest",
-    venue: "MÜPA, Bartók Béla Nemzeti Hangversenyterem",
-    title: "Összhang Gála",
-    program: [
-      "Jean-Philippe Rameau – Suite from Dardanus – 1. tétel (arr. Simon Cox)",
-    ],
-  },
-  {
-    date: "2025. május 15.",
-    time: "19:00",
-    location: "Budapest",
-    venue: "Régi Zeneakadémia Kamara terem",
-    title: "Kontrasztok/Színes lapok",
-    program: [
-      "W. A. Mozart – Sinfonia Concertante (Kv. 364) (arr. Szabó Benedek)",
-    ],
-    link: {
-      label: "Zeneakadémia",
-      href: "https://koncert.zeneakademia.hu/programok/2025-05-15-szines-lapok-13114",
-    },
-  },
-  {
-    date: "2025. május 7.",
-    time: "19:00",
-    location: "Budapest",
-    venue: "Zeneakadémia Solti terem",
-    title: "Szabó Benedek emlékkoncertje",
-    program: [
-      "Szabó Benedek – (Te)Réz Körút (Op.14)",
-      "Szabó Benedek – Madman's Treasure (Op.2)",
-    ],
-    link: {
-      label: "Zeneakadémia",
-      href: "https://koncert.zeneakademia.hu/programok/event-13317",
-    },
-  },
-  {
-    date: "2025. április 29.",
-    time: "19:00",
-    location: "Budapest",
-    venue: "Régi Zeneakadémia",
-    title: "Baczkó Vince Bachelor diplomakoncertje",
-    program: ["Szabó Benedek – Madman's Treasure (Op.2)"],
-  },
-  {
-    date: "2025. április 10.",
-    time: "16:00",
-    location: "Budapest",
-    venue: "Zeneakadémia Solti terem",
-    title: "Faragó István MA diplomakoncertje",
-    program: [
-      "W. A. Mozart – Sinfonia Concertante (Kv. 364) (arr. Szabó Benedek)",
-    ],
-  },
-  {
-    date: "2025. március 9.",
-    time: "16:00",
-    location: "Budapest",
-    venue: "Zeneakadémia Solti terem",
-    title: "Klasszikusok vasárnap délután",
-    program: [
-      "Jean-Philippe Rameau – Suite from Dardanus (arr. Simon Cox)",
-      "Szabó Benedek – (Te)Réz Körút (Op.14)",
-    ],
-    link: {
-      label: "Zeneakadémia",
-      href: "https://koncert.zeneakademia.hu/programok/2025-03-09-rez-korut-fuvos-szeptett-12952",
-    },
-  },
-  {
-    date: "2025. január 28.",
-    time: "18:00",
-    location: "Budapest XIII. kerületi",
-    venue: "Fischer Annie Zeneiskola",
-    title: "Bemutatkozik a Réz körút",
-    program: [
-      "Jean-Philippe Rameau – Suite from Dardanus (arr. Simon Cox)",
-      "Szabó Benedek – (Te)Réz Körút (Op.14)",
-      "W. A. Mozart – Sinfonia Concertante (Kv. 364) (arr. Szabó Benedek)",
-      "Szabó Benedek – Madman's Treasure (Op.2)",
-    ],
-    link: {
-      label: "Facebook esemény",
-      href: "https://facebook.com/events/s/bemutatkozik-a-rez-korut-szept/1286592266001558/",
-    },
-  },
-  {
-    date: "2024. december 21.",
-    location: "Budapest",
-    venue: "Zeneakadémia Nagyterem",
-    title: "Karácsonyi koncert a Zeneakadémián",
-    program: [
-      "Jean-Philippe Rameau – Suite from Dardanus (arr. Simon Cox)",
-    ],
-  },
-  {
-    date: "2024. május 8.",
-    location: "Budapest",
-    venue: "Régi Zeneakadémia",
-    title: "Dénes András BA Diplomakoncertje",
-    program: [
-      "Jean-Philippe Rameau – Suite from Dardanus (arr. Simon Cox)",
-    ],
-  },
-  {
-    date: "2024. április 30.",
-    location: "Budapest",
-    venue: "Régi Zeneakadémia",
-    title: "Kovács Márk BA Diplomakoncertje",
-    program: ["Eric Whitacre – October (arr. Szabó Benedek)"],
-  },
-  {
-    date: "2024. április 25.",
-    location: "Budapest",
-    venue: "Zeneakadémia Nagyterem",
-    title: "Pusztaszegi Ákos MA Diplomakoncertje",
-    program: [
-      "Jean-Philippe Rameau – Suite from Dardanus (arr. Simon Cox)",
-    ],
-  },
-  {
-    date: "2023. április 20.",
-    location: "Budapest",
-    venue: "Régi Zeneakadémia",
-    title: "Szabó Benedek BA Diplomakoncertje",
-    program: ["Eric Whitacre – October (arr. Szabó Benedek)"],
-  },
-  {
-    date: "2022. október 26.",
-    location: "Budapest",
-    venue: "Zeneakadémia Solti terem",
-    title: "Rézfúvós hangszerek",
-    program: ["Ránki Dezső – A hétfejű sárkány szerenádja"],
-  },
-];
 
 function ConcertCard({ concert }: { concert: Concert }) {
   const cardClassName =
@@ -223,9 +83,13 @@ function ConcertCard({ concert }: { concert: Concert }) {
 }
 
 export default async function EsemenyekPage() {
-  const upcomingConcerts = await getUpcomingConcerts();
+  const [upcomingConcerts, archivedConcerts] = await Promise.all([
+    getUpcomingConcerts(),
+    getArchivedConcerts(),
+  ]);
   // null = fetch error → hide section; [] = fetched but empty → hide section
   const displayedUpcoming = upcomingConcerts && upcomingConcerts.length > 0 ? upcomingConcerts : null;
+  const displayedArchived = archivedConcerts && archivedConcerts.length > 0 ? archivedConcerts : null;
   return (
     <div className="flex min-h-screen flex-col bg-background-dark text-neutral-100">
       <header className="sticky top-0 z-50 border-b border-neutral-border bg-background-dark/80 backdrop-blur-md">
@@ -264,25 +128,27 @@ export default async function EsemenyekPage() {
             )}
           </section>
 
-          <section className="mt-6 border-t border-neutral-border/80">
-            <div className="relative grid gap-6 py-10 md:grid-cols-12 md:gap-8">
-              <h3 className="pointer-events-none absolute top-11 left-1 z-0 hidden max-w-[92%] font-display text-6xl leading-[0.85] font-bold tracking-tight text-white/60 uppercase md:block lg:text-7xl">
-                Archív
-              </h3>
-              <div className="md:col-span-4">
-                <h3 className="font-display text-4xl leading-[0.88] font-bold tracking-tight text-white uppercase md:hidden">
+          {displayedArchived && (
+            <section className="mt-6 border-t border-neutral-border/80">
+              <div className="relative grid gap-6 py-10 md:grid-cols-12 md:gap-8">
+                <h3 className="pointer-events-none absolute top-11 left-1 z-0 hidden max-w-[92%] font-display text-6xl leading-[0.85] font-bold tracking-tight text-white/60 uppercase md:block lg:text-7xl">
                   Archív
                 </h3>
-              </div>
-              <div className="relative md:col-span-8">
-                <div className="relative z-10 space-y-3 md:pt-10">
-                  {pastConcerts.map((concert) => (
-                    <ConcertCard key={`${concert.date}-${concert.title}`} concert={concert} />
-                  ))}
+                <div className="md:col-span-4">
+                  <h3 className="font-display text-4xl leading-[0.88] font-bold tracking-tight text-white uppercase md:hidden">
+                    Archív
+                  </h3>
+                </div>
+                <div className="relative md:col-span-8">
+                  <div className="relative z-10 space-y-3 md:pt-10">
+                    {displayedArchived.map((concert) => (
+                      <ConcertCard key={`${concert.date}-${concert.title}`} concert={concert} />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
         </div>
       </main>
 
