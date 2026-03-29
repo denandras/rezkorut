@@ -91,8 +91,8 @@ export default function InternPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background-dark">
-      <div className="flex flex-1 flex-col px-4 pb-32 pt-12 md:items-center md:justify-center md:pt-0">
+    <div className="min-h-screen bg-background-dark">
+      <main className="px-4 pb-24 pt-12 md:flex md:min-h-screen md:items-center md:justify-center md:pt-0">
         <div className="w-full max-w-xs mx-auto md:max-w-sm">
           <p className="font-display mb-1 text-xs font-bold tracking-[0.2em] text-primary uppercase">
             Réz körút
@@ -124,7 +124,7 @@ export default function InternPage() {
             ))}
           </div>
         </div>
-      </div>
+      </main>
       <BottomNav active="none" />
     </div>
   );
