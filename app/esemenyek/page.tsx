@@ -162,39 +162,39 @@ const pastConcerts: Concert[] = [
 
 function ConcertCard({ concert }: { concert: Concert }) {
   const cardClassName =
-    "interactive-surface group rounded-xl border border-neutral-border bg-neutral-dark/40 p-5 transition-all hover:border-primary/30 hover:bg-neutral-dark";
+    "interactive-surface group flex items-start justify-between gap-4 rounded-xl border border-neutral-border bg-neutral-dark/40 p-5 transition-all hover:border-primary/30 hover:bg-neutral-dark";
 
   const cardContent = (
     <>
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-primary/10 px-2 py-1 text-[11px] font-semibold tracking-wider text-primary uppercase">
+      <div className="min-w-0 flex-1">
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-primary uppercase">
+          <span className="rounded-full bg-primary/10 px-2 py-1">
             {concert.date}
             {concert.time ? ` – ${concert.time}` : ""}
           </span>
-          <span className="rounded-full bg-neutral-700/60 px-2 py-1 text-[11px] font-semibold tracking-wider text-neutral-300 uppercase">
+          <span className="rounded-full bg-primary/10 px-2 py-1">
             {concert.location}, {concert.venue}
           </span>
         </div>
-        {concert.link && (
-          <IconExternalLink
-            className="size-4 text-primary transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-            aria-hidden="true"
-          />
+        <h3 className="font-display text-lg font-semibold leading-tight text-white">{concert.title}</h3>
+        {concert.program && concert.program.length > 0 && (
+          <ul className="mt-2 mb-2 space-y-0.5">
+            {concert.program.map((item) => (
+              <li key={item} className="text-sm text-neutral-400">
+                • {item}
+              </li>
+            ))}
+          </ul>
+        )}
+        {concert.note && (
+          <p className="mt-2 text-sm text-neutral-300">{concert.note}</p>
         )}
       </div>
-      <h3 className="font-display text-lg font-semibold leading-tight text-white">{concert.title}</h3>
-      {concert.program && concert.program.length > 0 && (
-        <ul className="mt-2 mb-2 space-y-0.5">
-          {concert.program.map((item) => (
-            <li key={item} className="text-sm text-neutral-400">
-              • {item}
-            </li>
-          ))}
-        </ul>
-      )}
-      {concert.note && (
-        <p className="mb-2 text-sm italic text-neutral-400">{concert.note}</p>
+      {concert.link && (
+        <IconExternalLink
+          className="mt-0.5 size-5 shrink-0 text-neutral-300 transition-colors group-hover:text-primary"
+          aria-hidden="true"
+        />
       )}
     </>
   );
@@ -206,7 +206,7 @@ function ConcertCard({ concert }: { concert: Concert }) {
         target="_blank"
         rel="noreferrer"
         aria-label={`${concert.title} – ${concert.link.label}`}
-        className={`block ${cardClassName}`}
+        className={cardClassName}
         data-proximity
         data-proximity-strength="2.1"
       >
@@ -216,11 +216,7 @@ function ConcertCard({ concert }: { concert: Concert }) {
   }
 
   return (
-    <article
-      className={cardClassName}
-      data-proximity
-      data-proximity-strength="2.1"
-    >
+    <article className={cardClassName}>
       {cardContent}
     </article>
   );
