@@ -92,8 +92,8 @@ export default function InternPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background-dark">
-      <div className="flex flex-1 flex-col px-5 pb-32 pt-12">
-        <div className="w-full max-w-sm mx-auto">
+      <div className="flex flex-1 flex-col px-4 pb-32 pt-12">
+        <div className="w-full max-w-xs mx-auto">
           <p className="font-display mb-1 text-xs font-bold tracking-[0.2em] text-primary uppercase">
             Réz körút
           </p>
