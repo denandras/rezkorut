@@ -15,7 +15,7 @@ html {
 }
 
 body {
-  min-height: max(884px, 100dvh);
+  min-height: 100dvh;
   background: #0b1a10;
   color: #f5f5f5;
   font-family: var(--font-lexend-deca), sans-serif;

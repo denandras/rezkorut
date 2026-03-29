@@ -112,7 +112,7 @@ export default function MadmansTreasurePage() {
           <div className="mt-8 overflow-hidden rounded-2xl border border-neutral-border bg-neutral-dark/40">
             <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
               <iframe
-                src="https://www.youtube.com/embed/WrrN445yFsw"
+                src="https://www.youtube.com/embed/7JtYfV7hjiM"
                 title="Szabó Benedek – Madman's Treasure"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
