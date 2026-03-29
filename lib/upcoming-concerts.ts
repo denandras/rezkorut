@@ -148,5 +148,5 @@ export async function getUpcomingConcerts(): Promise<Concert[] | null> {
 }
 
 export async function getArchivedConcerts(): Promise<Concert[] | null> {
-  return fetchConcertsMarkdown("rezkorut-archived-concerts.md");
+  return fetchConcertsMarkdown("rezkorut-past-concerts.md");
 }
