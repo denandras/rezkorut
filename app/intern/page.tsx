@@ -9,18 +9,23 @@ const PASSWORD = process.env.NEXT_PUBLIC_INTERN_PASSWORD ?? "";
 const links = [
   {
     title: "Próbarend",
-    description: "Közös naptár és próbabeosztás",
+    description: "Május",
     href: "https://rallly.co/invite/zK9ZVLoULvw7",
   },
   {
     title: "Kották",
-    description: "Felhő-tároló – kottafájlok",
+    description: "Felhő – kottafájlok",
     href: "https://storage.denandras.cloud/index.php/s/aB4iyD6jYP5x8Z3",
   },
   {
     title: "Dokumentumok & média",
-    description: "Felhő-tároló – dokumentumok és médiafájlok",
+    description: "Felhő – dokumentumok és médiafájlok",
     href: "https://storage.denandras.cloud/index.php/s/jMgmoRqe6coE9ys",
+  },
+  {
+    title: "Infók, darabok, személyek",
+    description: "Notion – együttes wiki",
+    href: "https://andrasdenes.notion.site/rezkorut?source=copy_link",
   },
 ];
 
@@ -58,7 +63,7 @@ export default function InternPage() {
             Réz körút
           </p>
           <h1 className="font-display mb-6 text-2xl font-bold text-neutral-100">
-            Intern oldal
+            Intern
           </h1>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <input
@@ -91,7 +96,7 @@ export default function InternPage() {
           Réz körút
         </p>
         <h1 className="font-display mb-8 text-2xl font-bold text-neutral-100">
-          Intern oldal
+          Intern
         </h1>
         <div className="flex flex-col gap-3">
           {links.map((link) => (
