@@ -91,34 +91,39 @@ export default function InternPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background-dark px-6">
-      <div className="flex flex-1 flex-col items-center justify-center py-16 pb-32">
-      <div className="w-full max-w-sm">
-        <p className="font-display mb-1 text-xs font-bold tracking-[0.2em] text-primary uppercase">
-          Réz körút
-        </p>
-        <h1 className="font-display mb-8 text-2xl font-bold text-neutral-100">
-          Intern
-        </h1>
-        <div className="flex flex-col gap-3">
-          {links.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              target="_blank"
-              rel="noreferrer"
-              className="flex flex-col rounded-xl border border-neutral-border bg-neutral-dark/60 px-5 py-4 transition-colors hover:border-primary/50 hover:bg-neutral-dark"
-            >
-              <span className="font-display text-base font-semibold text-neutral-100">
-                {link.title}
-              </span>
-              <span className="mt-0.5 text-xs text-neutral-400">
-                {link.description}
-              </span>
-            </a>
-          ))}
+    <div className="flex min-h-screen flex-col bg-background-dark">
+      <div className="flex flex-1 flex-col px-5 pb-32 pt-12">
+        <div className="w-full max-w-sm mx-auto">
+          <p className="font-display mb-1 text-xs font-bold tracking-[0.2em] text-primary uppercase">
+            Réz körút
+          </p>
+          <h1 className="font-display mb-6 text-2xl font-bold text-neutral-100">
+            Intern
+          </h1>
+          <div className="flex flex-col gap-3">
+            {links.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between rounded-xl border border-neutral-border bg-neutral-dark/60 px-5 py-4 transition-colors active:bg-neutral-dark hover:border-primary/50 hover:bg-neutral-dark"
+              >
+                <div className="flex flex-col">
+                  <span className="font-display text-base font-semibold text-neutral-100">
+                    {link.title}
+                  </span>
+                  <span className="mt-0.5 text-xs text-neutral-400">
+                    {link.description}
+                  </span>
+                </div>
+                <svg className="ml-3 size-4 shrink-0 text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </a>
+            ))}
+          </div>
         </div>
-      </div>
       </div>
       <BottomNav active="none" />
     </div>

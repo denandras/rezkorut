@@ -98,12 +98,15 @@ export default function MadmansTreasurePage() {
           </div>
 
           {/* Description */}
-          <p className="mt-6 text-base leading-relaxed text-neutral-300 md:text-lg">
-            Egy játékos, szatirikus utazás Budapest 4–6-os villamosának vonalán rézfúvós szeptettünktől.
-            A mű szerzője Szabó Benedek, 2024-ben éppen október 28-án elhunyt tubásunk, barátunk;
-            ezzel a felvétellel az ő képzelőereje, és szíve előtt tisztelgünk.
-            Elérhető minden zenemegosztó platformon.
-          </p>
+          <blockquote className="mt-6 space-y-4 border-l-2 border-primary/40 pl-5 text-base leading-relaxed text-neutral-300 md:text-lg">
+            <p>
+              &ldquo;Mindannyiunknak vannak nehéz napjai, érzelmei, néhányunknak vannak komolyan lesújtó emlékei, traumái amik a mentális egészségünket befolyásolják.
+            </p>
+            <p>
+              Ez a három tételes mű &ndash; melynek címe magyarul &ldquo;az őrült ember kincse&rdquo; &ndash; egy belső feszültségekkel küzdő ember igyekezetét ábrázolja, ahogy a merő káosz közepette próbálja megőrizni a maradék ép elméjét és moralitását.&rdquo;
+            </p>
+            <footer className="mt-2 text-sm text-neutral-500">&mdash; Szabó Benedek</footer>
+          </blockquote>
 
           {/* YouTube embed */}
           <div className="mt-8 overflow-hidden rounded-2xl border border-neutral-border bg-neutral-dark/40">
