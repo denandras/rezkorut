@@ -49,6 +49,7 @@ export default function InternPage() {
       sessionStorage.setItem(SESSION_KEY, "1");
       setAuthed(true);
       setError(false);
+      window.scrollTo(0, 0);
     } else {
       setError(true);
     }
