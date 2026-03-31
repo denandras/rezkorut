@@ -143,8 +143,6 @@ async function fetchConcertsMarkdown(
   }
 }
 
-}
-
 export async function getUpcomingConcerts(): Promise<Concert[] | null> {
   return fetchConcertsMarkdown("rezkorut-upcoming-concerts.md");
 }
