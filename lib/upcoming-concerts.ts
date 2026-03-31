@@ -143,10 +143,75 @@ async function fetchConcertsMarkdown(
   }
 }
 
+/**
+ * Static fallback for archived concerts, used when S3 file is absent.
+ * Keep in reverse-chronological order (newest first).
+ */
+const STATIC_PAST_CONCERTS: Concert[] = [
+  {
+    date: "2025. május 7.",
+    location: "Budapest",
+    venue: "Zeneakadémia – Solti terem",
+    title: "Szabó Benedek emlékkoncert",
+    program: [
+      "Szabó Benedek – Chivalry",
+      "Szabó Benedek – These",
+      "Szabó Benedek – Madman's Treasure",
+      "Szabó Benedek – (Te)Rézkörút",
+    ],
+  },
+  {
+    date: "2025. április 29.",
+    location: "Budapest",
+    venue: "Zeneakadémia",
+    title: "Baczkó Vince BA diplomakoncertje",
+    program: ["Szabó Benedek – (Te)Rézkörút"],
+  },
+  {
+    date: "2025. április 10.",
+    location: "Budapest",
+    venue: "Zeneakadémia – Solti terem",
+    title: "Faragó István MA diplomakoncertje",
+    program: [
+      "Szabó Benedek – (Te)Rézkörút",
+      "Szabó Benedek – Madman's Treasure",
+    ],
+  },
+  {
+    date: "2025. március 9.",
+    location: "Budapest",
+    venue: "Zeneakadémia – Solti terem",
+    title: "Réz körút",
+    program: [
+      "Jean-Philippe Rameau – Suite from Dardanus",
+      "Szabó Benedek – (Te)Réz Körút",
+      "W. A. Mozart – Sinfonia Concertante",
+      "Szabó Benedek – Madman's Treasure",
+    ],
+  },
+  {
+    date: "2024. január 28.",
+    location: "Budapest",
+    venue: "Fischer Annie terem",
+    title: "Réz körút",
+    program: [
+      "Jean-Philippe Rameau – Suite from Dardanus",
+      "Szabó Benedek – (Te)Réz Körút",
+      "W. A. Mozart – Sinfonia Concertante",
+      "Szabó Benedek – Madman's Treasure",
+    ],
+  },
+];
+
 export async function getUpcomingConcerts(): Promise<Concert[] | null> {
   return fetchConcertsMarkdown("rezkorut-upcoming-concerts.md");
 }
 
 export async function getArchivedConcerts(): Promise<Concert[] | null> {
-  return fetchConcertsMarkdown("rezkorut-past-concerts.md");
+  const result = await fetchConcertsMarkdown("rezkorut-past-concerts.md");
+  // If S3 has no file yet, fall back to static data so the section is always visible.
+  if (!result || result.length === 0) {
+    return STATIC_PAST_CONCERTS;
+  }
+  return result;
 }

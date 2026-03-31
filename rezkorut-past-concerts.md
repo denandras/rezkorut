@@ -1,0 +1,5 @@
+- 2025. május 7. | | Budapest | Zeneakadémia – Solti terem | Szabó Benedek emlékkoncert | Szabó Benedek – Chivalry; Szabó Benedek – These; Szabó Benedek – Madman's Treasure; Szabó Benedek – (Te)Rézkörút
+- 2025. április 29. | | Budapest | Zeneakadémia | Baczkó Vince BA diplomakoncertje | Szabó Benedek – (Te)Rézkörút
+- 2025. április 10. | | Budapest | Zeneakadémia – Solti terem | Faragó István MA diplomakoncertje | Szabó Benedek – (Te)Rézkörút; Szabó Benedek – Madman's Treasure
+- 2025. március 9. | | Budapest | Zeneakadémia – Solti terem | Réz körút | Jean-Philippe Rameau – Suite from Dardanus; Szabó Benedek – (Te)Réz Körút; W. A. Mozart – Sinfonia Concertante; Szabó Benedek – Madman's Treasure
+- 2024. január 28. | | Budapest | Fischer Annie terem | Réz körút | Jean-Philippe Rameau – Suite from Dardanus; Szabó Benedek – (Te)Réz Körút; W. A. Mozart – Sinfonia Concertante; Szabó Benedek – Madman's Treasure
