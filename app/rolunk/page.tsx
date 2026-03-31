@@ -51,7 +51,7 @@ export default function RolunkPage() {
                     alt="Réz körút profilkép"
                     width={192}
                     height={192}
-                    className="h-48 w-48 rounded-full object-cover shadow-2xl"
+                    className="h-[190px] w-[190px] rounded-full object-cover shadow-2xl"
                     priority
                   />
                 </div>
