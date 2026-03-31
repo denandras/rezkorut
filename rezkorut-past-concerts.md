@@ -1,5 +1,13 @@
-- 2025. május 7. | | Budapest | Zeneakadémia – Solti terem | Szabó Benedek emlékkoncert | Szabó Benedek – Chivalry; Szabó Benedek – These; Szabó Benedek – Madman's Treasure; Szabó Benedek – (Te)Rézkörút
-- 2025. április 29. | | Budapest | Zeneakadémia | Baczkó Vince BA diplomakoncertje | Szabó Benedek – (Te)Rézkörút
-- 2025. április 10. | | Budapest | Zeneakadémia – Solti terem | Faragó István MA diplomakoncertje | Szabó Benedek – (Te)Rézkörút; Szabó Benedek – Madman's Treasure
-- 2025. március 9. | | Budapest | Zeneakadémia – Solti terem | Réz körút | Jean-Philippe Rameau – Suite from Dardanus; Szabó Benedek – (Te)Réz Körút; W. A. Mozart – Sinfonia Concertante; Szabó Benedek – Madman's Treasure
-- 2024. január 28. | | Budapest | Fischer Annie terem | Réz körút | Jean-Philippe Rameau – Suite from Dardanus; Szabó Benedek – (Te)Réz Körút; W. A. Mozart – Sinfonia Concertante; Szabó Benedek – Madman's Treasure
+- 2025. október 12. | 19:00 | Budapest | MÜPA – Bartók Béla Nemzeti Hangversenyterem | Összhang Gála | Jean-Philippe Rameau – Suite from Dardanus – 1. tétel (arr. Simon Cox)
+- 2025. május 15. | 19:00 | Budapest | Régi Zeneakadémia – Kamara terem | Kontrasztok/Színes lapok | W. A. Mozart – Sinfonia Concertante (Kv. 364) (arr. Szabó Benedek) | https://koncert.zeneakademia.hu/programok/2025-05-15-szines-lapok-13114 | Jegyinfo
+- 2025. május 7. | 19:00 | Budapest | Zeneakadémia – Solti terem | Szabó Benedek emlékkoncertje | Szabó Benedek – (Te)Réz Körút (Op.14); Szabó Benedek – Madman's Treasure (Op.2) | https://koncert.zeneakademia.hu/programok/event-13317 | Jegyinfo
+- 2025. április 29. | 19:00 | Budapest | Régi Zeneakadémia | Baczkó Vince Bachelor diplomakoncertje | Szabó Benedek – Madman's Treasure (Op.2)
+- 2025. április 10. | 16:00 | Budapest | Zeneakadémia – Solti terem | Faragó István MA diplomakoncertje | W. A. Mozart – Sinfonia Concertante (Kv. 364) (arr. Szabó Benedek)
+- 2025. március 9. | 16:00 | Budapest | Zeneakadémia – Solti terem | Klasszikusok vasárnap délután | Jean-Philippe Rameau – Suite from Dardanus (arr. Simon Cox); Szabó Benedek – (Te)Réz Körút (Op.14) | https://koncert.zeneakademia.hu/programok/2025-03-09-rez-korut-fuvos-szeptett-12952 | Jegyinfo
+- 2025. január 28. | 18:00 | Budapest | Fischer Annie Zeneiskola | Bemutatkozik a Réz körút | Jean-Philippe Rameau – Suite from Dardanus (arr. Simon Cox); Szabó Benedek – (Te)Réz Körút (Op.14); W. A. Mozart – Sinfonia Concertante (Kv. 364) (arr. Szabó Benedek); Szabó Benedek – Madman's Treasure (Op.2) | https://facebook.com/events/s/bemutatkozik-a-rez-korut-szept/1286592266001558/ | Facebook esemény
+- 2024. december 21. | | Budapest | Zeneakadémia Nagyterem | Karácsonyi koncert a Zeneakadémián | Jean-Philippe Rameau – Suite from Dardanus (arr. Simon Cox)
+- 2024. május 8. | | Budapest | Régi Zeneakadémia | Dénes András BA Diplomakoncertje | Jean-Philippe Rameau – Suite from Dardanus (arr. Simon Cox)
+- 2024. április 30. | | Budapest | Régi Zeneakadémia | Kovács Márk BA Diplomakoncertje | Eric Whitacre – October (arr. Szabó Benedek)
+- 2024. április 25. | | Budapest | Zeneakadémia Nagyterem | Pusztaszegi Ákos MA Diplomakoncertje | Jean-Philippe Rameau – Suite from Dardanus (arr. Simon Cox)
+- 2023. április 20. | | Budapest | Régi Zeneakadémia | Szabó Benedek BA Diplomakoncertje | Eric Whitacre – October (arr. Szabó Benedek)
+- 2022. október 26. | | Budapest | Zeneakadémia – Solti terem | Rézfúvós hangszerek | Ránki Dezső – A hétfejű sárkány szerenádja
