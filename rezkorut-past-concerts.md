@@ -1,3 +1,4 @@
+- 2026. március 31. | 16:00 | Budapest | Régi Zeneakadémia | Vida Mátyás BA diplomakoncertje | Eric Whitacre – October (arr. Szabó Benedek) | https://fb.me/e/5JpTIxRcg | Facebook esemény
 - 2025. október 12. | 19:00 | Budapest | MÜPA – Bartók Béla Nemzeti Hangversenyterem | Összhang Gála | Jean-Philippe Rameau – Suite from Dardanus – 1. tétel (arr. Simon Cox)
 - 2025. május 15. | 19:00 | Budapest | Régi Zeneakadémia – Kamara terem | Kontrasztok/Színes lapok | W. A. Mozart – Sinfonia Concertante (Kv. 364) (arr. Szabó Benedek) | https://koncert.zeneakademia.hu/programok/2025-05-15-szines-lapok-13114 | Jegyinfo
 - 2025. május 7. | 19:00 | Budapest | Zeneakadémia – Solti terem | Szabó Benedek emlékkoncertje | Szabó Benedek – (Te)Réz Körút (Op.14); Szabó Benedek – Madman's Treasure (Op.2) | https://koncert.zeneakademia.hu/programok/event-13317 | Jegyinfo
