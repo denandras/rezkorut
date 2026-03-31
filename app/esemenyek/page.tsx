@@ -76,7 +76,11 @@ function ConcertCard({ concert }: { concert: Concert }) {
   }
 
   return (
-    <article className={cardClassName}>
+    <article
+      className={cardClassName}
+      data-proximity
+      data-proximity-strength="2.1"
+    >
       {cardContent}
     </article>
   );
