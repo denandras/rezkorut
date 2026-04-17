@@ -16,12 +16,12 @@ const links = [
   {
     title: "Kották",
     description: "Felhő – kották",
-    href: "https://storage.denandras.cloud/index.php/s/aB4iyD6jYP5x8Z3",
+    href: "https://storage.denandras.cloud/index.php/s/2q2NJXmc9p9MN7m",
   },
   {
     title: "Dokumentumok & média",
     description: "Felhő – dokumentumok és médiafájlok",
-    href: "https://storage.denandras.cloud/index.php/s/jMgmoRqe6coE9ys",
+    href: "https://storage.denandras.cloud/index.php/s/kXqjCsJMMTSgzkX",
   },
   {
     title: "Infók, darabok, személyek",
