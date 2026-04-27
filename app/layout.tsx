@@ -49,6 +49,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="hu" className="dark">
+      <head>
+        {/* Prefetch all pages for instant navigation */}
+        <link rel="prefetch" href="/" />
+        <link rel="prefetch" href="/esemenyek" />
+        <link rel="prefetch" href="/media" />
+        <link rel="prefetch" href="/rolunk" />
+        <link rel="prefetch" href="/terez-korut" />
+        <link rel="prefetch" href="/madmans-treasure" />
+      </head>
       <body className={lexendDeca.variable}>
         <ProximityEffects />
         {children}
