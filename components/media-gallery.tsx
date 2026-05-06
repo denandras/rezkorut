@@ -102,7 +102,7 @@ export default function MediaGallery({
                 onClick={() => isLoaded && setLightboxSrc(item.viewUrl)}
               >
                 {!isLoaded && (
-                  <div className="absolute inset-0 animate-pulse bg-neutral-dark/70" />
+                  <div className="absolute inset-0 animate-pulse bg-[#143d14]/70" />
                 )}
 
                 <Image
