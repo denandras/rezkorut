@@ -100,7 +100,7 @@ export default function MadmansTreasurePage() {
           {/* Description */}
           <blockquote className="mt-6 space-y-4 border-l-2 border-primary/40 pl-5 text-base leading-relaxed text-neutral-300 md:text-lg">
             <p>
-              &ldquo;Mindannyiunknak vannak nehéz napjai, érzelmei, néhányunknak vannak komolyan lesújtó emlékei, traumái amik a mentális egészségünket befolyásolják.
+              &ldquo;Mindannyiunknak vannak nehéz napjai, érzelmei, néhányunknak vannak komolyan lesújtó emlékei, traumái, amik a mentális egészségünket befolyásolják.
             </p>
             <p>
               Ez a három tételes mű &ndash; melynek címe magyarul &ldquo;az őrült ember kincse&rdquo; &ndash; egy belső feszültségekkel küzdő ember igyekezetét ábrázolja, ahogy a merő káosz közepette próbálja megőrizni a maradék ép elméjét és moralitását.&rdquo;
