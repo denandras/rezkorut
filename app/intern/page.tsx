@@ -9,11 +9,6 @@ const PASSWORD = process.env.NEXT_PUBLIC_INTERN_PASSWORD ?? "";
 
 const links = [
   {
-    title: "Próbarend",
-    description: "Május",
-    href: "https://rallly.co/invite/zK9ZVLoULvw7",
-  },
-  {
     title: "Kották",
     description: "Felhő – kották",
     href: "https://storage.denandras.cloud/index.php/s/2q2NJXmc9p9MN7m",
