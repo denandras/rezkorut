@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import BottomNav from "@/components/bottom-nav";
+import AddToCalendarButton from "@/components/add-to-calendar-button";
 import { IconCalendar, IconExternalLink } from "@/components/icons";
 import { getUpcomingConcerts, getArchivedConcerts, type Concert } from "@/lib/upcoming-concerts";
 
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-function ConcertCard({ concert }: { concert: Concert }) {
+function ConcertCard({ concert, showCalendar = false }: { concert: Concert; showCalendar?: boolean }) {
   const cardClassName =
     "interactive-surface group flex items-start justify-between gap-4 rounded-xl border border-neutral-border bg-neutral-dark/40 p-5 transition-all hover:border-primary/30 hover:bg-neutral-dark";
 
@@ -50,12 +51,15 @@ function ConcertCard({ concert }: { concert: Concert }) {
           <p className="mt-2 text-sm text-neutral-300">{concert.note}</p>
         )}
       </div>
-      {concert.link && (
-        <IconExternalLink
-          className="mt-0.5 size-5 shrink-0 text-neutral-300 transition-colors group-hover:text-primary"
-          aria-hidden="true"
-        />
-      )}
+      <div className="flex shrink-0 flex-col items-end gap-2">
+        {concert.link && (
+          <IconExternalLink
+            className="mt-0.5 size-5 text-neutral-300 transition-colors group-hover:text-primary"
+            aria-hidden="true"
+          />
+        )}
+        {showCalendar && <AddToCalendarButton concert={concert} />}
+      </div>
     </>
   );
 
@@ -124,7 +128,7 @@ export default async function EsemenyekPage() {
                 <div className="relative md:order-1 md:col-span-8">
                   <div className="relative z-10 space-y-3 md:pt-10">
                     {displayedUpcoming.map((concert) => (
-                      <ConcertCard key={`${concert.date}-${concert.title}`} concert={concert} />
+                      <ConcertCard key={`${concert.date}-${concert.title}`} concert={concert} showCalendar />
                     ))}
                   </div>
                 </div>
