@@ -70,11 +70,10 @@ export default function InternPage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <input
               type="password"
-              autoFocus
               placeholder="Jelszó"
               value={input}
               onChange={(e) => { setInput(e.target.value); setError(false); }}
-              className="rounded-lg border border-neutral-border bg-neutral-dark px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-primary"
+              className="rounded-lg border border-neutral-border bg-neutral-dark px-4 py-3 text-base text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-primary"
             />
             {error && (
               <p className="text-xs text-red-400">Helytelen jelszó.</p>
@@ -94,7 +93,7 @@ export default function InternPage() {
   return (
     <div className="min-h-screen bg-background-dark">
       <main className="px-4 pb-24 pt-12 md:flex md:min-h-screen md:items-center md:justify-center md:pt-0">
-        <div className="w-full max-w-xs mx-auto md:max-w-sm">
+        <div className="w-full max-w-md mx-auto md:max-w-sm">
           <p className="font-display mb-1 text-xs font-bold tracking-[0.2em] text-primary uppercase">
             Réz körút
           </p>

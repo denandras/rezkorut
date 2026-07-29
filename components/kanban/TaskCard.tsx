@@ -6,7 +6,6 @@ import {
   type Task,
   PRIORITY_COLORS,
   PRIORITY_LABELS,
-  CATEGORY_COLORS,
   CATEGORY_LABELS,
 } from "@/lib/supabase";
 
@@ -44,21 +43,21 @@ export default function TaskCard({ task, onEdit, onDelete, isOverlay }: TaskCard
       style={style}
       {...attributes}
       {...listeners}
-      className={`group relative rounded-lg border bg-neutral-dark/80 p-3 cursor-grab active:cursor-grabbing transition-shadow ${
+      className={`group relative rounded-lg border bg-neutral-dark/80 p-3 cursor-grab active:cursor-grabbing transition-shadow select-none touch-none ${
         isDragging ? "opacity-40 border-primary/50" : "border-neutral-border hover:border-neutral-500"
       } ${isOverlay ? "shadow-lg border-primary/50 rotate-2" : ""}`}
     >
       {/* Title */}
-      <p className="text-sm font-medium text-neutral-100 leading-snug mb-2">
+      <p
+        onClick={(e) => { if (!isOverlay) { e.stopPropagation(); onEdit?.(); } }}
+        className="text-sm font-medium text-neutral-100 leading-snug mb-2 cursor-pointer hover:text-primary transition-colors"
+      >
         {task.title}
       </p>
 
       {/* Badges */}
       <div className="flex flex-wrap gap-1.5 mb-2">
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
-          style={{ backgroundColor: `${CATEGORY_COLORS[task.category]}20`, color: CATEGORY_COLORS[task.category] }}
-        >
+        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-neutral-400 bg-neutral-700/40">
           {CATEGORY_LABELS[task.category]}
         </span>
         <span
@@ -80,7 +79,7 @@ export default function TaskCard({ task, onEdit, onDelete, isOverlay }: TaskCard
           )}
         </div>
         {!isOverlay && (
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
             {onEdit && (
               <button
                 onClick={(e) => { e.stopPropagation(); onEdit(); }}

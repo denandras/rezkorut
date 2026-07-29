@@ -15,7 +15,7 @@ const securityHeaders = [
       "img-src 'self' data: blob:",
       "media-src 'self' blob:",
       "frame-src https://www.youtube.com https://youtube.com",
-      "connect-src 'self'",
+      "connect-src 'self' https://kgfdriljjrpzywqotuuc.supabase.co wss://kgfdriljjrpzywqotuuc.supabase.co",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",

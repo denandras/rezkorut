@@ -7,7 +7,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   realtime: { params: { eventsPerSecond: 2 } },
 });
 
-export type TaskStatus = "todo" | "in_progress" | "done" | "archived";
+export type TaskStatus = "todo" | "pending" | "in_progress" | "done" | "archived";
 export type Priority = "low" | "medium" | "high" | "urgent";
 export type Category = "scores" | "rehearsal" | "concert" | "admin" | "website" | "general";
 
@@ -28,6 +28,7 @@ export interface Task {
 
 export const COLUMNS: { id: TaskStatus; label: string; color: string }[] = [
   { id: "todo", label: "Teendő", color: "#6b7280" },
+  { id: "pending", label: "Függőben", color: "#3b82f6" },
   { id: "in_progress", label: "Folyamatban", color: "#f59e0b" },
   { id: "done", label: "Kész", color: "#10b981" },
   { id: "archived", label: "Archív", color: "#4b5563" },

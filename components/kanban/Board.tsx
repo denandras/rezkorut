@@ -24,6 +24,7 @@ export default function KanbanBoard() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [filter, setFilter] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -130,9 +131,23 @@ export default function KanbanBoard() {
   }
 
   async function handleDelete(id: string) {
+    if (!confirm("Biztosan törlöd ezt a feladatot?")) return;
+    // Optimistic: remove from UI immediately
+    setTasks((prev) => prev.filter((t) => t.id !== id));
     const { error } = await supabase.from("tasks").delete().eq("id", id);
-    if (error) console.error("Delete error:", error);
+    if (error) {
+      console.error("Delete error:", error);
+      // Re-fetch to restore on failure
+      fetchTasks();
+    }
   }
+
+  const filteredTasks = filter.trim()
+    ? tasks.filter((t) =>
+        t.title.toLowerCase().includes(filter.toLowerCase().trim()) ||
+        (t.assignee_name || "").toLowerCase().includes(filter.toLowerCase().trim())
+      )
+    : tasks;
 
   if (loading) {
     return (
@@ -145,14 +160,23 @@ export default function KanbanBoard() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display text-lg font-bold text-neutral-100">Kanban</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-neutral-900 transition-opacity hover:opacity-80"
-        >
-          + Új feladat
-        </button>
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-lg font-bold text-neutral-100">Kanban</h2>
+          <button
+            onClick={() => setShowForm(true)}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-neutral-900 transition-opacity hover:opacity-80"
+          >
+            + Új feladat
+          </button>
+        </div>
+        <input
+          type="text"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Keresés névre vagy címre…"
+          className="w-full rounded-lg border border-neutral-border bg-neutral-dark px-3 py-2 text-base text-neutral-100 placeholder:text-neutral-600 outline-none focus:border-primary"
+        />
       </div>
 
       {/* Board */}
@@ -162,12 +186,12 @@ export default function KanbanBoard() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-3 overflow-x-auto pb-4 flex-1 min-h-0">
+        <div className="flex flex-col gap-3 overflow-x-auto pb-4 flex-1 min-h-0 md:flex-row">
           {COLUMNS.map((col) => (
             <Column
               key={col.id}
               column={col}
-              tasks={tasks.filter((t) => t.state === col.id)}
+              tasks={filteredTasks.filter((t) => t.state === col.id)}
               onEdit={setEditingTask}
               onDelete={handleDelete}
             />

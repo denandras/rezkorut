@@ -55,7 +55,7 @@ export default function TaskForm({ task, onSubmit, onClose }: TaskFormProps) {
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-2xl border border-neutral-border bg-background-dark p-6"
+        className="w-full max-w-md max-w-full overflow-hidden rounded-2xl border border-neutral-border bg-background-dark p-6"
       >
         <h3 className="font-display text-lg font-bold text-neutral-100 mb-4">
           {task ? "Szerkesztés" : "Új feladat"}
@@ -69,9 +69,8 @@ export default function TaskForm({ task, onSubmit, onClose }: TaskFormProps) {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              autoFocus
               placeholder="Mit kell csinálni?"
-              className="w-full rounded-lg border border-neutral-border bg-neutral-dark px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-600 outline-none focus:border-primary"
+              className="w-full rounded-lg border border-neutral-border bg-neutral-dark px-3 py-2 text-base text-neutral-100 placeholder:text-neutral-600 outline-none focus:border-primary"
             />
           </div>
 
@@ -131,17 +130,17 @@ export default function TaskForm({ task, onSubmit, onClose }: TaskFormProps) {
 
           {/* Assignee + Due date */}
           <div className="flex gap-3">
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <label className="block text-xs text-neutral-400 mb-1">Felelős</label>
               <input
                 type="text"
                 value={assignee}
                 onChange={(e) => setAssignee(e.target.value)}
                 placeholder="Név"
-                className="w-full rounded-lg border border-neutral-border bg-neutral-dark px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-600 outline-none focus:border-primary"
+                className="w-full rounded-lg border border-neutral-border bg-neutral-dark px-3 py-2 text-base text-neutral-100 placeholder:text-neutral-600 outline-none focus:border-primary"
               />
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <label className="block text-xs text-neutral-400 mb-1">Határidő</label>
               <input
                 type="date"

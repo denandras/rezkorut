@@ -16,7 +16,7 @@ export default function Column({ column, tasks, onEdit, onDelete }: ColumnProps)
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
   return (
-    <div className="flex min-w-[260px] max-w-[320px] flex-1 flex-col">
+    <div className="flex min-w-[260px] max-w-[320px] flex-1 flex-col w-full md:w-auto">
       {/* Column header */}
       <div className="flex items-center gap-2 mb-2 px-1">
         <span

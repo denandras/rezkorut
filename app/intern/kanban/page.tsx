@@ -46,11 +46,10 @@ export default function KanbanPage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <input
               type="password"
-              autoFocus
               placeholder="Jelszó"
               value={input}
               onChange={(e) => { setInput(e.target.value); setError(false); }}
-              className="rounded-lg border border-neutral-border bg-neutral-dark px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-primary"
+              className="rounded-lg border border-neutral-border bg-neutral-dark px-4 py-3 text-base text-neutral-100 placeholder:text-neutral-500 outline-none focus:border-primary"
             />
             {error && <p className="text-xs text-red-400">Helytelen jelszó.</p>}
             <button
@@ -67,7 +66,7 @@ export default function KanbanPage() {
 
   return (
     <div className="min-h-screen bg-background-dark">
-      <main className="mx-auto max-w-6xl px-4 pb-24 pt-6">
+      <main className="mx-auto max-w-6xl px-4 pb-24 pt-6 w-full">
         {/* Back link */}
         <div className="mb-4">
           <a
