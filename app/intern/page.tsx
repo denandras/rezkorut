@@ -14,6 +14,11 @@ const links = [
     href: "/intern/kanban",
   },
   {
+    title: "Felvételek",
+    description: "Réz körút hang- és videófelvételek",
+    href: "/intern/media",
+  },
+  {
     title: "Kották",
     description: "Felhő – kották",
     href: "https://storage.denandras.cloud/index.php/s/2q2NJXmc9p9MN7mm",
