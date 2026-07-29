@@ -1,4 +1,4 @@
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getMediaTokenSecret, getS4Config } from "@/lib/s4-config";
 import { verifyMediaAccessToken } from "@/lib/media-access-token";
 
@@ -97,27 +97,92 @@ export async function GET(request: Request) {
     },
   });
 
+  // Determine total object size via HEAD if possible
+  const totalSize = await (async () => {
+    try {
+      const head = await client.send(
+        new HeadObjectCommand({ Bucket: cfg.bucket, Key: key }),
+      );
+      return head.ContentLength ?? 0;
+    } catch {
+      return 0;
+    }
+  })();
+
+  // Parse Range header for video/audio seeking
+  const rangeHeader = request.headers.get("range");
+  const safeName = (payload.name || "file").replace(/[^a-zA-Z0-9._-]/g, "-");
+  const disposition = download
+    ? `attachment; filename="${safeName}"`
+    : "inline";
+
+  if (download || !rangeHeader || !totalSize) {
+    // No range request or download — serve full file
+    try {
+      const output = await client.send(
+        new GetObjectCommand({ Bucket: cfg.bucket, Key: key }),
+      );
+
+      if (!output.Body) return new Response("File not found", { status: 404 });
+
+      const stream = output.Body.transformToWebStream();
+
+      return new Response(stream, {
+        status: 200,
+        headers: {
+          "Content-Type": getContentType(key),
+          "Content-Disposition": disposition,
+          "Cache-Control": "private, no-store",
+          "X-Content-Type-Options": "nosniff",
+          ...(totalSize ? { "Content-Length": String(totalSize) } : {}),
+          "Accept-Ranges": "bytes",
+        },
+      });
+    } catch {
+      return new Response("Failed to retrieve file", { status: 502 });
+    }
+  }
+
+  // Parse range: "bytes=start-end"
+  const match = rangeHeader.match(/bytes=(\d*)-(\d*)/);
+  if (!match) {
+    return new Response("Invalid range", { status: 416 });
+  }
+
+  const start = match[1] ? parseInt(match[1], 10) : 0;
+  const end = match[2] ? parseInt(match[2], 10) : totalSize - 1;
+
+  if (start >= totalSize || end >= totalSize || start > end) {
+    return new Response(null, {
+      status: 416,
+      headers: { "Content-Range": `bytes */${totalSize}` },
+    });
+  }
+
   try {
     const output = await client.send(
-      new GetObjectCommand({ Bucket: cfg.bucket, Key: key }),
+      new GetObjectCommand({
+        Bucket: cfg.bucket,
+        Key: key,
+        Range: `bytes=${start}-${end}`,
+      }),
     );
 
     if (!output.Body) return new Response("File not found", { status: 404 });
 
     const stream = output.Body.transformToWebStream();
-    const safeName = (payload.name || "file").replace(/[^a-zA-Z0-9._-]/g, "-");
-    const disposition = download
-      ? `attachment; filename="${safeName}"`
-      : "inline";
+    const contentLength = end - start + 1;
 
     return new Response(stream, {
-      status: 200,
+      status: 206,
       headers: {
         "Content-Type": getContentType(key),
         "Content-Disposition": disposition,
+        "Content-Length": String(contentLength),
+        "Content-Range": `bytes ${start}-${end}/${totalSize}`,
+        "Accept-Ranges": "bytes",
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
-        ...(output.ContentLength ? { "Content-Length": String(output.ContentLength) } : {}),
       },
     });
   } catch {
