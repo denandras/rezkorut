@@ -9,6 +9,11 @@ const PASSWORD = process.env.NEXT_PUBLIC_INTERN_PASSWORD ?? "";
 
 const links = [
   {
+    title: "Kanban",
+    description: "Feladatkezelő – kották, próbák, koncertek",
+    href: "/intern/kanban",
+  },
+  {
     title: "Kották",
     description: "Felhő – kották",
     href: "https://storage.denandras.cloud/index.php/s/2q2NJXmc9p9MN7mm",
@@ -97,12 +102,13 @@ export default function InternPage() {
             Intern
           </h1>
           <div className="flex flex-col gap-3">
-            {links.map((link) => (
+            {links.map((link) => {
+              const isInternal = link.href.startsWith("/");
+              return (
               <a
                 key={link.href}
                 href={link.href}
-                target="_blank"
-                rel="noreferrer"
+                {...(isInternal ? {} : { target: "_blank", rel: "noreferrer" })}
                 className="flex items-center justify-between rounded-xl border border-neutral-border bg-neutral-dark/60 px-5 py-4 transition-colors active:bg-neutral-dark hover:border-primary/50 hover:bg-neutral-dark"
               >
                 <div className="flex flex-col">
@@ -117,7 +123,8 @@ export default function InternPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
               </a>
-            ))}
+              );
+            })}
           </div>
         </div>
       </main>
