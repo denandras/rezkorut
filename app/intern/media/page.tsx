@@ -176,15 +176,6 @@ export default function MediaBrowserPage() {
       <main className="mx-auto max-w-4xl px-4 pb-24 pt-6 w-full">
         {/* Back link */}
         <div className="mb-4 flex items-center justify-between">
-          <a
-            href="/intern"
-            className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-primary transition-colors"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            Vissza az internhez
-          </a>
           {currentFolder && (
             <button
               onClick={goBack}
@@ -196,6 +187,15 @@ export default function MediaBrowserPage() {
               Vissza a mappákhoz
             </button>
           )}
+          <a
+            href="/intern"
+            className={`inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-primary transition-colors ${currentFolder ? "ml-auto" : ""}`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            Vissza az internhez
+          </a>
         </div>
 
         {/* Header */}
