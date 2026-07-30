@@ -24,6 +24,7 @@ export interface Task {
   due_date: string | null;
   created_at: string;
   updated_at: string;
+  completed_at: string | null;
 }
 
 export const COLUMNS: { id: TaskStatus; label: string; color: string }[] = [

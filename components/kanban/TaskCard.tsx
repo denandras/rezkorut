@@ -37,6 +37,10 @@ export default function TaskCard({ task, onEdit, onDelete, isOverlay }: TaskCard
 
   const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.state !== "done";
 
+  const completedDate = task.completed_at
+    ? new Date(task.completed_at).toLocaleDateString("hu-HU", { month: "short", day: "numeric" })
+    : null;
+
   return (
     <div
       ref={setNodeRef}
@@ -75,6 +79,11 @@ export default function TaskCard({ task, onEdit, onDelete, isOverlay }: TaskCard
           {dueDate && (
             <span className={isOverdue ? "text-red-400" : ""}>
               📅 {dueDate}
+            </span>
+          )}
+          {completedDate && (
+            <span className="text-green-500/70">
+              ✓ {completedDate}
             </span>
           )}
         </div>

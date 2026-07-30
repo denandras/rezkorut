@@ -10,10 +10,16 @@ type ColumnProps = {
   tasks: Task[];
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
+  maxHeight?: number | null;
 };
 
-export default function Column({ column, tasks, onEdit, onDelete }: ColumnProps) {
+export default function Column({ column, tasks, onEdit, onDelete, maxHeight }: ColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
+
+  // Each card is roughly 96px + 8px gap. Compute max height in px.
+  const style = maxHeight
+    ? { maxHeight: `${maxHeight * 104}px` }
+    : undefined;
 
   return (
     <div className="flex min-w-[260px] max-w-[320px] flex-1 flex-col w-full md:w-auto">
@@ -32,7 +38,8 @@ export default function Column({ column, tasks, onEdit, onDelete }: ColumnProps)
       {/* Drop zone */}
       <div
         ref={setNodeRef}
-        className={`flex-1 rounded-xl border p-2 min-h-[200px] transition-colors ${
+        style={style}
+        className={`flex-1 rounded-xl border p-2 min-h-[200px] transition-colors overflow-y-auto ${
           isOver
             ? "border-primary/40 bg-neutral-dark/80"
             : "border-neutral-border bg-neutral-dark/40"

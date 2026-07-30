@@ -95,11 +95,20 @@ export default function KanbanBoard() {
       return;
     }
 
-    // Update task state
+    // Update task state + set/clear completed_at
     const newState = targetState;
+    const isCompleting = newState === "done" || newState === "archived";
+    const wasCompleted = task.state === "done" || task.state === "archived";
+    const update: Record<string, string | null> = { state: newState };
+    if (isCompleting && !wasCompleted) {
+      update.completed_at = new Date().toISOString();
+    } else if (!isCompleting && wasCompleted) {
+      update.completed_at = null;
+    }
+
     const { error } = await supabase
       .from("tasks")
-      .update({ state: newState })
+      .update(update)
       .eq("id", activeId);
 
     if (error) console.error("Update error:", error);
@@ -125,7 +134,19 @@ export default function KanbanBoard() {
   }
 
   async function handleUpdate(id: string, data: Partial<Task>) {
-    const { error } = await supabase.from("tasks").update(data).eq("id", id);
+    const updateData: Partial<Task> = { ...data };
+    // Set/clear completed_at when state changes via form edit
+    if (data.state) {
+      const isCompleting = data.state === "done" || data.state === "archived";
+      const task = tasks.find((t) => t.id === id);
+      const wasCompleted = task && (task.state === "done" || task.state === "archived");
+      if (isCompleting && !wasCompleted) {
+        updateData.completed_at = new Date().toISOString();
+      } else if (!isCompleting && wasCompleted) {
+        updateData.completed_at = null;
+      }
+    }
+    const { error } = await supabase.from("tasks").update(updateData).eq("id", id);
     if (error) console.error("Update error:", error);
     setEditingTask(null);
   }
@@ -151,7 +172,14 @@ export default function KanbanBoard() {
       : [...tasks];
 
     return list.sort((a, b) => {
-      // Primary: due_date (shortest deadline first, nulls last)
+      // Done/archived: sort by completed_at DESC (fresh to old)
+      if (a.state === "done" || a.state === "archived") {
+        const aComp = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+        const bComp = b.completed_at ? new Date(b.completed_at).getTime() : 0;
+        return bComp - aComp;
+      }
+
+      // Active columns: primary by due_date (shortest first, nulls last)
       const aDate = a.due_date ? new Date(a.due_date).getTime() : Infinity;
       const bDate = b.due_date ? new Date(b.due_date).getTime() : Infinity;
       if (aDate !== bDate) return aDate - bDate;
@@ -199,15 +227,25 @@ export default function KanbanBoard() {
         onDragEnd={handleDragEnd}
       >
         <div className="flex flex-col gap-3 overflow-x-auto pb-4 flex-1 min-h-0 md:flex-row">
-          {COLUMNS.map((col) => (
-            <Column
-              key={col.id}
-              column={col}
-              tasks={filteredTasks.filter((t) => t.state === col.id)}
-              onEdit={setEditingTask}
-              onDelete={handleDelete}
-            />
-          ))}
+          {(() => {
+            // Compute max task count across active columns (todo, pending, in_progress)
+            const activeStates = ["todo", "pending", "in_progress"];
+            const maxActiveCount = activeStates.reduce((max, state) => {
+              const count = filteredTasks.filter((t) => t.state === state).length;
+              return Math.max(max, count);
+            }, 0);
+
+            return COLUMNS.map((col) => (
+              <Column
+                key={col.id}
+                column={col}
+                tasks={filteredTasks.filter((t) => t.state === col.id)}
+                onEdit={setEditingTask}
+                onDelete={handleDelete}
+                maxHeight={col.id === "done" || col.id === "archived" ? maxActiveCount : null}
+              />
+            ));
+          })()}
         </div>
         <DragOverlay>
           {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
