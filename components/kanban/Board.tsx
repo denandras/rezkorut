@@ -13,7 +13,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { supabase, type Task, type TaskStatus, COLUMNS } from "@/lib/supabase";
+import { supabase, type Task, type TaskStatus, COLUMNS, PRIORITY_RANK } from "@/lib/supabase";
 import Column from "@/components/kanban/Column";
 import TaskCard from "@/components/kanban/TaskCard";
 import TaskForm from "@/components/kanban/TaskForm";
@@ -142,12 +142,24 @@ export default function KanbanBoard() {
     }
   }
 
-  const filteredTasks = filter.trim()
-    ? tasks.filter((t) =>
-        t.title.toLowerCase().includes(filter.toLowerCase().trim()) ||
-        (t.assignee_name || "").toLowerCase().includes(filter.toLowerCase().trim())
-      )
-    : tasks;
+  const filteredTasks = (() => {
+    const list = filter.trim()
+      ? tasks.filter((t) =>
+          t.title.toLowerCase().includes(filter.toLowerCase().trim()) ||
+          (t.assignee_name || "").toLowerCase().includes(filter.toLowerCase().trim())
+        )
+      : [...tasks];
+
+    return list.sort((a, b) => {
+      // Primary: due_date (shortest deadline first, nulls last)
+      const aDate = a.due_date ? new Date(a.due_date).getTime() : Infinity;
+      const bDate = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+      if (aDate !== bDate) return aDate - bDate;
+
+      // Secondary: priority (high to low)
+      return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+    });
+  })();
 
   if (loading) {
     return (

@@ -57,6 +57,13 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   general: "#f59e0b",
 };
 
+export const PRIORITY_RANK: Record<Priority, number> = {
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
+
 export const CATEGORY_LABELS: Record<Category, string> = {
   scores: "Kották",
   rehearsal: "Próba",
