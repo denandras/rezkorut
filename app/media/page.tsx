@@ -29,7 +29,7 @@ export type MediaItem = {
 };
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "gif", "avif"]);
-const MEDIA_TOKEN_TTL_MS = 10 * 60 * 1000;
+const MEDIA_TOKEN_TTL_MS = 60 * 60 * 1000; // 60 min — must exceed Cache-Control max-age
 
 function isImageKey(key: string) {
   const ext = key.split(".").pop()?.toLowerCase();

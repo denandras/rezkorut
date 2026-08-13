@@ -132,7 +132,7 @@ export async function GET(request: Request) {
         headers: {
           "Content-Type": getContentType(key),
           "Content-Disposition": disposition,
-          "Cache-Control": "private, no-store",
+          "Cache-Control": "private, max-age=3600",
           "X-Content-Type-Options": "nosniff",
           ...(totalSize ? { "Content-Length": String(totalSize) } : {}),
           "Accept-Ranges": "bytes",
@@ -181,7 +181,7 @@ export async function GET(request: Request) {
         "Content-Length": String(contentLength),
         "Content-Range": `bytes ${start}-${end}/${totalSize}`,
         "Accept-Ranges": "bytes",
-        "Cache-Control": "private, no-store",
+        "Cache-Control": "private, max-age=3600",
         "X-Content-Type-Options": "nosniff",
       },
     });

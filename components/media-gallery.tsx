@@ -102,15 +102,25 @@ export default function MediaGallery({
                 onClick={() => isLoaded && setLightboxSrc(item.viewUrl)}
               >
                 {!isLoaded && (
-                  <div className="absolute inset-0 animate-pulse bg-[#143d14]/70" />
+                  <div className="absolute inset-0 min-h-[200px] animate-pulse bg-[#143d14]/70" />
+                )}
+
+                {!isLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <svg className="h-6 w-6 animate-spin text-primary/40" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  </div>
                 )}
 
                 <Image
                   src={item.viewUrl}
                   alt={`Réz körút – ${index + 1}`}
-                  width={1600}
-                  height={1200}
+                  width={800}
+                  height={600}
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  quality={70}
                   loading={prioritized ? "eager" : "lazy"}
                   fetchPriority={prioritized ? "high" : "auto"}
                   onLoad={() =>

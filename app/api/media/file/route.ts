@@ -144,7 +144,7 @@ export async function GET(request: Request) {
       headers: {
         "Content-Type": safeContentType,
         "Content-Disposition": disposition,
-        "Cache-Control": "private, no-store",
+        "Cache-Control": "public, max-age=3600",
         "X-Content-Type-Options": "nosniff",
       },
     });
