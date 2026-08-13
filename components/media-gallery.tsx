@@ -92,25 +92,23 @@ export default function MediaGallery({
               style={{ "--reveal-delay": `${80 + (index % 12) * 55}ms` } as React.CSSProperties}
             >
               <article
-                className={`interactive-surface group relative cursor-pointer overflow-hidden rounded-xl transition-all ${
+                className={`interactive-surface group relative cursor-pointer overflow-hidden rounded-xl transition-all border ${
                   isLoaded
-                    ? "border border-neutral-border bg-neutral-dark/40 hover:border-primary/30 hover:bg-neutral-dark"
-                    : "border border-transparent bg-transparent"
+                    ? "border-neutral-border bg-neutral-dark/40 hover:border-primary/30 hover:bg-neutral-dark"
+                    : "border-neutral-border/50 bg-neutral-dark/30"
                 }`}
                 data-proximity
                 data-proximity-strength="2.1"
                 onClick={() => isLoaded && setLightboxSrc(item.viewUrl)}
               >
                 {!isLoaded && (
-                  <div className="absolute inset-0 min-h-[200px] animate-pulse bg-[#143d14]/70" />
-                )}
-
-                {!isLoaded && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <svg className="h-6 w-6 animate-spin text-primary/40" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
+                  <div className="relative min-h-[200px] w-full animate-pulse bg-[#143d14]/70">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <svg className="h-6 w-6 animate-spin text-primary/40" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    </div>
                   </div>
                 )}
 
