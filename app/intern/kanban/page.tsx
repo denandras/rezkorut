@@ -3,9 +3,7 @@
 import { useState, useEffect } from "react";
 import BottomNav from "@/components/bottom-nav";
 import KanbanBoard from "@/components/kanban/Board";
-
-const SESSION_KEY = "rezkorut-intern-auth";
-const PASSWORD = process.env.NEXT_PUBLIC_INTERN_PASSWORD ?? "";
+import { INTERN_PASSWORD, getInternAuth, setInternAuth } from "@/lib/intern-auth";
 
 export default function KanbanPage() {
   const [authed, setAuthed] = useState(false);
@@ -14,7 +12,7 @@ export default function KanbanPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem(SESSION_KEY) === "1") {
+    if (getInternAuth()) {
       setAuthed(true);
     }
     setReady(true);
@@ -22,8 +20,8 @@ export default function KanbanPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (input === PASSWORD) {
-      sessionStorage.setItem(SESSION_KEY, "1");
+    if (input === INTERN_PASSWORD) {
+      setInternAuth();
       setAuthed(true);
       setError(false);
     } else {

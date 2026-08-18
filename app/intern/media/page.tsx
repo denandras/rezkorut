@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import BottomNav from "@/components/bottom-nav";
-
-const SESSION_KEY = "rezkorut-intern-auth";
-const PASSWORD = process.env.NEXT_PUBLIC_INTERN_PASSWORD ?? "";
+import { INTERN_PASSWORD, getInternAuth, setInternAuth } from "@/lib/intern-auth";
 
 type MediaFile = {
   name: string;
@@ -49,14 +47,14 @@ export default function MediaBrowserPage() {
 
   // --- Auth (same pattern as other intern pages) ---
   useEffect(() => {
-    if (sessionStorage.getItem(SESSION_KEY) === "1") setAuthed(true);
+    if (getInternAuth()) setAuthed(true);
     setReady(true);
   }, []);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (input === PASSWORD) {
-      sessionStorage.setItem(SESSION_KEY, "1");
+    if (input === INTERN_PASSWORD) {
+      setInternAuth();
       setAuthed(true);
       setError(false);
     } else {
