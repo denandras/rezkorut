@@ -1,3 +1,11 @@
+- 2026. szeptember 13. | | Fehérvárcsurgó | Károlyi Kastély | Hangszerbemutató kastélykörút a Réz körúttal és Dobri Dániellel | Papp Mátyás: új mű (ősbemutató); Bánó Barnabás: új mű; Molnár Viktor: Divertimento; Ránki György: A hétfejű sárkány szerenádja
+- 2026. szeptember 12. | | Gyomaendrőd | templom | A Réz körút koncertje | Sibelius: Overture in F Minor; Händel: Rinaldo Suite; Bach: Brandenburg Concerto No. 3 in G Major; Ránki György: A hétfejű sárkány szerenádja; Szabó Benedek: Madman's Treasure
+- 2026. május 26. | 18:00 | Budapest | Zeneakadémia XXIII. terem | Szende Natalie elektronikus zeneszerzés diplomakoncertje
+- 2026. május 5. | 19:00 | Budapest | Zeneakadémia Nagyterem | Dénes András MA diplomakoncertje | Sebestyén-Lázár Regina – Something, someday, somewhere…
+- 2026. május 3. | 18:00 | Budapest | Zeneakadémia, Solti Terem | Zeneszerzés és Alkalmazott Zeneszerzés BA diplomakoncert | Sebestyén-Lázár Regina – Something, someday, somewhere… | https://lfze.hu/programok/2026-05-03-zeneszerzes-ba-diplomakoncert-14296 | Regisztráció
+- 2026. április 30. | 18:00 | Budapest | Kiscelli Múzeum | 10 Years of EXILES – From Loss to Acceptance | Koprodukció Szende Natalie elektronikus zenei előadóval | https://www.jegy.hu/program/10-years-of-exiles-from-loss-to-acceptance-koncert-187897 | Jegyinfo
+- 2026. április 16. | 15:00 | Budapest | Régi Zeneakadémia | Gulyás Buda és Nagy Sándor BA diplomakoncertje
+- 2026. április 15. | 19:30 | Budapest | Pesti Vigadó | Rézfúvósünnep | Szabó Benedek – Madman's Treasure (Op.2) | https://vigado.hu/hu/programok/fujj-szabadon | Vigadó
 - 2026. március 31. | 16:00 | Budapest | Régi Zeneakadémia | Vida Mátyás BA diplomakoncertje | Eric Whitacre – October (arr. Szabó Benedek) | https://fb.me/e/5JpTIxRcg | Facebook esemény
 - 2025. október 12. | 19:00 | Budapest | MÜPA – Bartók Béla Nemzeti Hangversenyterem | Összhang Gála | Jean-Philippe Rameau – Suite from Dardanus – 1. tétel (arr. Simon Cox)
 - 2025. május 15. | 19:00 | Budapest | Régi Zeneakadémia – Kamara terem | Kontrasztok/Színes lapok | W. A. Mozart – Sinfonia Concertante (Kv. 364) (arr. Szabó Benedek) | https://koncert.zeneakademia.hu/programok/2025-05-15-szines-lapok-13114 | Jegyinfo
