@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import {
   type Task,
+  type TaskStatus,
   type Priority,
   type Category,
+  COLUMNS,
   PRIORITY_LABELS,
   CATEGORY_LABELS,
 } from "@/lib/supabase";
@@ -18,6 +20,7 @@ type TaskFormProps = {
 export default function TaskForm({ task, onSubmit, onClose }: TaskFormProps) {
   const [title, setTitle] = useState(task?.title || "");
   const [description, setDescription] = useState(task?.description || "");
+  const [state, setState] = useState<TaskStatus>(task?.state || "todo");
   const [priority, setPriority] = useState<Priority>(task?.priority || "medium");
   const [category, setCategory] = useState<Category>(task?.category || "general");
   const [assignee, setAssignee] = useState(task?.assignee_name || "");
@@ -37,6 +40,7 @@ export default function TaskForm({ task, onSubmit, onClose }: TaskFormProps) {
     onSubmit({
       title: title.trim(),
       description: description.trim(),
+      state,
       priority,
       category,
       assignee_name: assignee.trim(),
@@ -55,7 +59,7 @@ export default function TaskForm({ task, onSubmit, onClose }: TaskFormProps) {
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
-        className="w-full max-w-md max-w-full overflow-hidden rounded-2xl border border-neutral-border bg-background-dark p-6"
+        className="w-full max-w-md max-w-full overflow-hidden rounded-2xl border border-neutral-border bg-background-dark p-6 max-h-[90vh] overflow-y-auto"
       >
         <h3 className="font-display text-lg font-bold text-neutral-100 mb-4">
           {task ? "Szerkesztés" : "Új feladat"}
@@ -84,6 +88,31 @@ export default function TaskForm({ task, onSubmit, onClose }: TaskFormProps) {
               placeholder="Részletek…"
               className="w-full rounded-lg border border-neutral-border bg-neutral-dark px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-600 outline-none focus:border-primary resize-none"
             />
+          </div>
+
+          {/* Status - segmented control */}
+          <div>
+            <label className="block text-xs text-neutral-400 mb-1">Státusz</label>
+            <div className="flex flex-wrap gap-1">
+              {COLUMNS.map((col) => (
+                <button
+                  key={col.id}
+                  type="button"
+                  onClick={() => setState(col.id)}
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                    state === col.id
+                      ? "bg-primary text-neutral-900"
+                      : "bg-neutral-dark text-neutral-400 hover:text-neutral-200"
+                  }`}
+                >
+                  <span
+                    className="inline-block w-2 h-2 rounded-full"
+                    style={{ backgroundColor: col.color }}
+                  />
+                  {col.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Priority - segmented control */}

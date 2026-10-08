@@ -13,7 +13,8 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { supabase, type Task, type TaskStatus, COLUMNS, PRIORITY_RANK } from "@/lib/supabase";
+import { supabase, type Task, type TaskStatus, type Priority, type Category, COLUMNS, PRIORITY_RANK } from "@/lib/supabase";
+import { useIsMobile } from "@/lib/useIsMobile";
 import Column from "@/components/kanban/Column";
 import TaskCard from "@/components/kanban/TaskCard";
 import TaskForm from "@/components/kanban/TaskForm";
@@ -25,6 +26,8 @@ export default function KanbanBoard() {
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [filter, setFilter] = useState("");
+  const [openBoxes, setOpenBoxes] = useState(false);
+  const isMobile = useIsMobile();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -115,13 +118,14 @@ export default function KanbanBoard() {
   }
 
   async function handleCreate(data: Partial<Task>) {
+    const initialState = data.state || "todo";
     const maxSort = tasks
-      .filter((t) => t.state === "todo")
+      .filter((t) => t.state === initialState)
       .reduce((max, t) => Math.max(max, t.sort_order), 0);
     const { error } = await supabase.from("tasks").insert({
       title: data.title,
       description: data.description || "",
-      state: "todo",
+      state: initialState,
       sort_order: maxSort + 1,
       priority: data.priority || "medium",
       category: data.category || "general",
@@ -197,10 +201,26 @@ export default function KanbanBoard() {
     );
   }
 
+  const columns = COLUMNS.map((col) => {
+    const isBox = col.id === "done" || col.id === "archived";
+    return (
+      <Column
+        key={col.id}
+        column={col}
+        tasks={filteredTasks.filter((t) => t.state === col.id)}
+        onEdit={setEditingTask}
+        onDelete={handleDelete}
+        isMobile={isMobile}
+        collapsed={isBox ? !openBoxes : undefined}
+        onToggle={isBox ? () => setOpenBoxes((prev) => !prev) : undefined}
+      />
+    );
+  });
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex flex-col gap-3 mb-4">
+      <div className="flex flex-col gap-3 mb-4 shrink-0">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-bold text-neutral-100">Kanban</h2>
           <button
@@ -220,37 +240,28 @@ export default function KanbanBoard() {
       </div>
 
       {/* Board */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex flex-col gap-3 overflow-x-auto pb-4 flex-1 min-h-0 md:flex-row">
-          {(() => {
-            // Compute max task count across active columns (todo, pending, in_progress)
-            const activeStates = ["todo", "pending", "in_progress"];
-            const maxActiveCount = activeStates.reduce((max, state) => {
-              const count = filteredTasks.filter((t) => t.state === state).length;
-              return Math.max(max, count);
-            }, 0);
-
-            return COLUMNS.map((col) => (
-              <Column
-                key={col.id}
-                column={col}
-                tasks={filteredTasks.filter((t) => t.state === col.id)}
-                onEdit={setEditingTask}
-                onDelete={handleDelete}
-                maxHeight={col.id === "done" || col.id === "archived" ? maxActiveCount : null}
-              />
-            ));
-          })()}
+      {isMobile ? (
+        // Mobile: no DnD, columns stack vertically, page scrolls as before
+        <div className="flex flex-col gap-3">
+          {columns}
         </div>
-        <DragOverlay>
-          {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
-        </DragOverlay>
-      </DndContext>
+      ) : (
+        // Desktop: fixed-height board — the page never scrolls; each column's
+        // card list scrolls internally (and the task form modal scrolls too).
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex flex-row gap-3 overflow-x-auto flex-1 min-h-0 snap-x">
+            {columns}
+          </div>
+          <DragOverlay>
+            {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
+          </DragOverlay>
+        </DndContext>
+      )}
 
       {/* Create/Edit form */}
       {(showForm || editingTask) && (

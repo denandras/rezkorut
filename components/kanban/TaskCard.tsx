@@ -14,9 +14,10 @@ type TaskCardProps = {
   onEdit?: () => void;
   onDelete?: () => void;
   isOverlay?: boolean;
+  isMobile?: boolean;
 };
 
-export default function TaskCard({ task, onEdit, onDelete, isOverlay }: TaskCardProps) {
+export default function TaskCard({ task, onEdit, onDelete, isOverlay, isMobile }: TaskCardProps) {
   const {
     attributes,
     listeners,
@@ -24,7 +25,7 @@ export default function TaskCard({ task, onEdit, onDelete, isOverlay }: TaskCard
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id, disabled: isOverlay });
+  } = useSortable({ id: task.id, disabled: isOverlay || isMobile });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -41,20 +42,41 @@ export default function TaskCard({ task, onEdit, onDelete, isOverlay }: TaskCard
     ? new Date(task.completed_at).toLocaleDateString("hu-HU", { month: "short", day: "numeric" })
     : null;
 
+  // On mobile: entire card is a tap target to open the task.
+  // On desktop: drag listeners on the card, title click opens.
+  const cardProps = isMobile
+    ? {
+        onClick: (e: React.MouseEvent) => {
+          if (!isOverlay) {
+            e.stopPropagation();
+            onEdit?.();
+          }
+        },
+      }
+    : {
+        ...attributes,
+        ...listeners,
+      };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className={`group relative rounded-lg border bg-neutral-dark/80 p-3 cursor-grab active:cursor-grabbing transition-shadow select-none touch-none ${
+      {...cardProps}
+      className={`group relative rounded-lg border bg-neutral-dark/80 p-3 transition-shadow select-none ${
+        isMobile
+          ? "cursor-pointer active:bg-neutral-dark/60"
+          : "cursor-grab active:cursor-grabbing touch-none"
+      } ${
         isDragging ? "opacity-40 border-primary/50" : "border-neutral-border hover:border-neutral-500"
       } ${isOverlay ? "shadow-lg border-primary/50 rotate-2" : ""}`}
     >
-      {/* Title */}
+      {/* Title — on desktop, clicking title opens the task (stops drag propagation) */}
       <p
-        onClick={(e) => { if (!isOverlay) { e.stopPropagation(); onEdit?.(); } }}
-        className="text-sm font-medium text-neutral-100 leading-snug mb-2 cursor-pointer hover:text-primary transition-colors"
+        onClick={!isMobile && !isOverlay ? (e) => { e.stopPropagation(); onEdit?.(); } : undefined}
+        className={`text-sm font-medium text-neutral-100 leading-snug mb-2 ${
+          isMobile ? "" : "cursor-pointer hover:text-primary transition-colors"
+        }`}
       >
         {task.title}
       </p>

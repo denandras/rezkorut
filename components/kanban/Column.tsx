@@ -2,7 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { type Task, type TaskStatus, COLUMNS } from "@/lib/supabase";
+import { type Task, type TaskStatus } from "@/lib/supabase";
 import TaskCard from "@/components/kanban/TaskCard";
 
 type ColumnProps = {
@@ -10,61 +10,137 @@ type ColumnProps = {
   tasks: Task[];
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
-  maxHeight?: number | null;
+  isMobile?: boolean;
+  /** Box-mode columns (done/archived): collapsed = show as a closed box. */
+  collapsed?: boolean;
+  onToggle?: () => void;
 };
 
-export default function Column({ column, tasks, onEdit, onDelete, maxHeight }: ColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({ id: column.id });
+export default function Column({
+  column,
+  tasks,
+  onEdit,
+  onDelete,
+  isMobile,
+  collapsed,
+  onToggle,
+}: ColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: column.id, disabled: isMobile });
 
-  // Each card is roughly 96px + 8px gap. Compute max height in px.
-  const style = maxHeight
-    ? { maxHeight: `${maxHeight * 104}px` }
-    : undefined;
+  const isBoxColumn = collapsed !== undefined;
+  const isCollapsed = isBoxColumn && collapsed;
 
-  return (
-    <div className="flex min-w-[260px] max-w-[320px] flex-1 flex-col w-full md:w-auto">
-      {/* Column header */}
-      <div className="flex items-center gap-2 mb-2 px-1">
-        <span
-          className="inline-block w-2 h-2 rounded-full"
-          style={{ backgroundColor: column.color }}
+  const cards = (
+    <div className="flex flex-col gap-2">
+      {tasks.map((task) => (
+        <TaskCard
+          key={task.id}
+          task={task}
+          isMobile={isMobile}
+          onEdit={() => onEdit(task)}
+          onDelete={() => onDelete(task.id)}
         />
+      ))}
+      {tasks.length === 0 && (
+        <p className="text-center text-xs text-neutral-600 py-8">
+          Üres
+        </p>
+      )}
+    </div>
+  );
+
+  const header = (
+    <div className="flex items-center gap-2 mb-2 px-1">
+      <span
+        className="inline-block w-2 h-2 rounded-full"
+        style={{ backgroundColor: column.color }}
+      />
+      {onToggle ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="font-display text-sm font-semibold text-neutral-200 transition-colors hover:text-neutral-100"
+        >
+          {column.label}
+        </button>
+      ) : (
         <span className="font-display text-sm font-semibold text-neutral-200">
           {column.label}
         </span>
-        <span className="text-xs text-neutral-500">{tasks.length}</span>
-      </div>
+      )}
+      <span className="text-xs text-neutral-500">{tasks.length}</span>
+      {isBoxColumn && !collapsed && (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label="Összecsukás"
+          className="ml-auto rounded p-1 text-neutral-500 transition-colors hover:text-neutral-200"
+        >
+          <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
 
-      {/* Drop zone */}
+  // Collapsed box: cards hidden, but still a droppable target so tasks
+  // can be thrown in without opening it. Click to open.
+  if (isCollapsed) {
+    return (
+      <div className="flex min-w-[260px] max-w-[320px] flex-1 flex-col w-full md:w-auto">
+        {header}
+        <button
+          ref={setNodeRef}
+          type="button"
+          onClick={onToggle}
+          title="Elrejtett feladatok megnyitása"
+          className={`flex h-40 flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-3 text-center transition-colors ${
+            isOver
+              ? "border-primary/40 bg-neutral-dark/80"
+              : "border-neutral-border bg-neutral-dark/40 hover:border-neutral-600"
+          }`}
+        >
+          <svg
+            className="size-6 text-neutral-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" />
+          </svg>
+          <span className="text-xs text-neutral-500">
+            Feladatok elrejtve — kattints a megnyitáshoz
+          </span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-w-[260px] max-w-[320px] flex-1 flex-col w-full md:w-auto">
+      {header}
       <div
         ref={setNodeRef}
-        style={style}
         className={`flex-1 rounded-xl border p-2 min-h-[200px] transition-colors overflow-y-auto ${
-          isOver
-            ? "border-primary/40 bg-neutral-dark/80"
-            : "border-neutral-border bg-neutral-dark/40"
+          isMobile
+            ? "border-neutral-border bg-neutral-dark/40"
+            : isOver
+              ? "border-primary/40 bg-neutral-dark/80"
+              : "border-neutral-border bg-neutral-dark/40"
         }`}
       >
-        <SortableContext
-          items={tasks.map((t) => t.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          <div className="flex flex-col gap-2">
-            {tasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onEdit={() => onEdit(task)}
-                onDelete={() => onDelete(task.id)}
-              />
-            ))}
-            {tasks.length === 0 && (
-              <p className="text-center text-xs text-neutral-600 py-8">
-                Üres
-              </p>
-            )}
-          </div>
-        </SortableContext>
+        {isMobile ? (
+          cards
+        ) : (
+          <SortableContext
+            items={tasks.map((t) => t.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {cards}
+          </SortableContext>
+        )}
       </div>
     </div>
   );
