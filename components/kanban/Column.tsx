@@ -88,7 +88,7 @@ export default function Column({
   // can be thrown in without opening it. Click to open.
   if (isCollapsed) {
     return (
-      <div className="flex min-w-[260px] max-w-[320px] flex-1 flex-col w-full md:w-auto">
+      <div className="flex min-w-[260px] max-w-[320px] flex-1 flex-col w-full md:w-auto h-full min-h-0">
         {header}
         <button
           ref={setNodeRef}
@@ -119,7 +119,7 @@ export default function Column({
   }
 
   return (
-    <div className="flex min-w-[260px] max-w-[320px] flex-1 flex-col w-full md:w-auto">
+    <div className="flex min-w-[260px] max-w-[320px] flex-1 flex-col w-full md:w-auto h-full min-h-0">
       {header}
       <div
         ref={setNodeRef}

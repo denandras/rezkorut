@@ -63,10 +63,10 @@ export default function KanbanPage() {
   }
 
   return (
-    <div className="h-screen bg-background-dark overflow-hidden">
-      <main className="mx-auto max-w-6xl px-4 pb-6 pt-4 w-full h-full flex flex-col">
+    <div className="h-dvh bg-background-dark overflow-hidden">
+      <main className="mx-auto max-w-6xl px-4 pb-16 pt-4 w-full h-full flex flex-col">
         {/* Back link */}
-        <div className="mb-4 shrink-0">
+        <div className="mb-2 shrink-0">
           <a
             href="/intern"
             className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-primary transition-colors"
@@ -77,7 +77,7 @@ export default function KanbanPage() {
             Vissza az internhez
           </a>
         </div>
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 h-full">
           <KanbanBoard />
         </div>
       </main>

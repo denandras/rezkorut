@@ -218,7 +218,7 @@ export default function KanbanBoard() {
   });
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Header */}
       <div className="flex flex-col gap-3 mb-4 shrink-0">
         <div className="flex items-center justify-between">
