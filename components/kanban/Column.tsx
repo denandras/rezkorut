@@ -10,6 +10,7 @@ type ColumnProps = {
   tasks: Task[];
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
+  onStateChange: (id: string, newState: TaskStatus) => void;
   isMobile?: boolean;
   /** Box-mode columns (done/archived): collapsed = show as a closed box. */
   collapsed?: boolean;
@@ -21,6 +22,7 @@ export default function Column({
   tasks,
   onEdit,
   onDelete,
+  onStateChange,
   isMobile,
   collapsed,
   onToggle,
@@ -39,6 +41,7 @@ export default function Column({
           isMobile={isMobile}
           onEdit={() => onEdit(task)}
           onDelete={() => onDelete(task.id)}
+          onStateChange={(ns) => onStateChange(task.id, ns)}
         />
       ))}
       {tasks.length === 0 && (

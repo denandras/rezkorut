@@ -98,11 +98,17 @@ export default function KanbanBoard() {
       return;
     }
 
-    // Update task state + set/clear completed_at
-    const newState = targetState;
-    const isCompleting = newState === "done" || newState === "archived";
+    await changeState(task.id, targetState);
+  }
+
+  /** Move a task to another column; stamps/clears completed_at. */
+  async function changeState(id: string, targetState: TaskStatus) {
+    const task = tasks.find((t) => t.id === id);
+    if (!task || task.state === targetState) return;
+
+    const isCompleting = targetState === "done" || targetState === "archived";
     const wasCompleted = task.state === "done" || task.state === "archived";
-    const update: Record<string, string | null> = { state: newState };
+    const update: Record<string, string | null> = { state: targetState };
     if (isCompleting && !wasCompleted) {
       update.completed_at = new Date().toISOString();
     } else if (!isCompleting && wasCompleted) {
@@ -112,7 +118,7 @@ export default function KanbanBoard() {
     const { error } = await supabase
       .from("tasks")
       .update(update)
-      .eq("id", activeId);
+      .eq("id", id);
 
     if (error) console.error("Update error:", error);
   }
@@ -210,6 +216,7 @@ export default function KanbanBoard() {
         tasks={filteredTasks.filter((t) => t.state === col.id)}
         onEdit={setEditingTask}
         onDelete={handleDelete}
+        onStateChange={changeState}
         isMobile={isMobile}
         collapsed={isBox ? !openBoxes : undefined}
         onToggle={isBox ? () => setOpenBoxes((prev) => !prev) : undefined}
