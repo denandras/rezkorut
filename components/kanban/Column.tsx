@@ -41,7 +41,6 @@ export default function Column({
           isMobile={isMobile}
           onEdit={() => onEdit(task)}
           onDelete={() => onDelete(task.id)}
-          onStateChange={(ns) => onStateChange(task.id, ns)}
         />
       ))}
       {tasks.length === 0 && (
