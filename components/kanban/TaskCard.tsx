@@ -102,7 +102,7 @@ function StatusDropdown({
         aria-haspopup="menu"
         aria-expanded={open}
         title="Státusz módosítása"
-        className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium text-neutral-300 bg-neutral-700/40 hover:bg-neutral-700/70 transition-colors"
+        className="inline-flex cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium text-neutral-300 bg-neutral-700/40 hover:bg-neutral-700/70 transition-colors"
       >
         <span
           className="inline-block w-1.5 h-1.5 rounded-full"
@@ -139,7 +139,7 @@ function StatusDropdown({
                 type="button"
                 role="menuitem"
                 onClick={(e) => choose(e, col.id)}
-                className={`flex w-full items-center gap-2 px-3 py-2 text-xs transition-colors ${
+                className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-xs transition-colors ${
                   col.id === task.state
                     ? "text-neutral-100 bg-neutral-700/40"
                     : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700/60"
@@ -282,9 +282,14 @@ export default function TaskCard({
         </span>
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-[10px] text-neutral-500">
+      {/* Footer — actions live in their own stopPropagation zone so a click
+          here can never start a drag or bubble into the card handlers. */}
+      <div
+        className="flex items-center justify-between"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-wrap items-center gap-2 text-[10px] text-neutral-500">
           {task.assignee_name && <span>{task.assignee_name}</span>}
           {dueDate && (
             <span className={isOverdue ? "text-red-400" : ""}>
@@ -298,11 +303,13 @@ export default function TaskCard({
           )}
         </div>
         {!isOverlay && (
-          <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1.5 shrink-0 ml-2">
             {onEdit && (
               <button
-                onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                className="text-neutral-500 hover:text-primary"
+                onClick={() => onEdit()}
+                title="Szerkesztés"
+                aria-label="Szerkesztés"
+                className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-700/50 hover:text-neutral-100"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -310,9 +317,17 @@ export default function TaskCard({
               </button>
             )}
             {onDelete && (
+              <span
+                aria-hidden="true"
+                className="h-4 w-px bg-neutral-border"
+              />
+            )}
+            {onDelete && (
               <button
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                className="text-neutral-500 hover:text-red-400"
+                onClick={() => onDelete()}
+                title="Törlés"
+                aria-label="Törlés"
+                className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-red-400/10 hover:text-red-400"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
