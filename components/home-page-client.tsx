@@ -229,7 +229,7 @@ export default function HomePageClient({
         {upcomingConcerts && upcomingConcerts.length > 0 && (
           <section className="px-6 py-12 md:px-12 md:py-0" data-reveal>
             <div className="mb-4 flex items-end justify-between gap-3">
-              <h2 className="font-display text-3xl leading-[0.9] font-bold tracking-tight text-white uppercase">
+              <h2 className="font-display text-3xl leading-[0.9] font-bold tracking-tight text-white">
                 Közelgő koncertjeink
               </h2>
             </div>
