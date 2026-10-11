@@ -17,11 +17,11 @@ export default function AddToCalendarButton({ concert }: AddToCalendarButtonProp
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 hover:border-primary/50"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 p-2.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 hover:border-primary/50 md:px-3 md:py-1.5"
       aria-label={`Naptárba mentés: ${concert.title}`}
     >
       <IconGoogleCalendar className="size-3.5" />
-      <span>Naptárba</span>
+      <span className="hidden md:inline">Naptárba</span>
     </a>
   );
 }

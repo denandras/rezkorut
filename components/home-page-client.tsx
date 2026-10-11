@@ -223,9 +223,11 @@ export default function HomePageClient({
             </div>
         </div>
 
-        {/* Közelgő események – same as the events page's upcoming block */}
+        {/* Közelgő események – same as the events page's upcoming block.
+            mt-12: on mobile the title block has no bottom padding, so without an
+            explicit gap this section sat jammed against the tagline. */}
         {upcomingConcerts && upcomingConcerts.length > 0 && (
-          <section className="px-6 md:px-12" data-reveal>
+          <section className="mt-12 px-6 md:mt-0 md:px-12" data-reveal>
             <div className="mb-4 flex items-end justify-between gap-3">
               <h2 className="font-display text-3xl leading-[0.9] font-bold tracking-tight text-white uppercase">
                 Koncertjeink
