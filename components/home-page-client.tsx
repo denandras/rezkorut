@@ -223,27 +223,20 @@ export default function HomePageClient({
             </div>
         </div>
 
-        {/* Közelgő események – same as the events page's upcoming block.
+        {/* Közelgő események – single heading on the landing (user request 2026-10-11);
+            /esemenyek keeps its two-level Koncertjeink/Közelgő + Archív display structure.
             mt-12: on mobile the title block has no bottom padding, so without an
             explicit gap this section sat jammed against the tagline. */}
         {upcomingConcerts && upcomingConcerts.length > 0 && (
           <section className="mt-12 px-6 md:mt-0 md:px-12" data-reveal>
             <div className="mb-4 flex items-end justify-between gap-3">
               <h2 className="font-display text-3xl leading-[0.9] font-bold tracking-tight text-white uppercase">
-                Koncertjeink
+                Közelgő koncertjeink
               </h2>
             </div>
 
             <div className="relative grid gap-6 py-2 md:grid-cols-12 md:gap-8">
-              <h3 className="pointer-events-none absolute top-2 right-1 z-0 hidden max-w-[92%] text-right font-display text-6xl leading-[0.85] font-bold tracking-tight text-white/60 uppercase md:block lg:text-7xl">
-                Közelgő
-              </h3>
-              <div className="md:order-2 md:col-span-4 md:text-right">
-                <h3 className="font-display text-4xl leading-[0.88] font-bold tracking-tight text-white uppercase md:hidden">
-                  Közelgő
-                </h3>
-              </div>
-              <div className="relative md:order-1 md:col-span-8">
+              <div className="relative md:col-span-8">
                 <div className="relative z-10 space-y-3 md:pt-10">
                   {upcomingConcerts.map((concert) => (
                     <ConcertCard
