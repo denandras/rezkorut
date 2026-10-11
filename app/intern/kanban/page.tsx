@@ -63,8 +63,11 @@ export default function KanbanPage() {
   }
 
   return (
-    <div className="h-dvh bg-background-dark overflow-hidden">
-      <main className="mx-auto max-w-6xl px-4 pb-16 pt-4 w-full h-full flex flex-col">
+    // Mobile: min-h-dvh + no overflow lock → the PAGE scrolls and columns grow
+    // with their content (no internal column scrolling). Desktop: fixed-height
+    // board — the page never scrolls; columns scroll internally (2026-10-08).
+    <div className="flex min-h-dvh flex-col bg-background-dark md:h-dvh md:overflow-hidden">
+      <main className="mx-auto max-w-6xl px-4 pb-16 pt-4 w-full flex flex-col md:h-full">
         {/* Back link */}
         <div className="mb-2 shrink-0">
           <a
@@ -77,7 +80,7 @@ export default function KanbanPage() {
             Vissza az internhez
           </a>
         </div>
-        <div className="flex-1 min-h-0 h-full">
+        <div className="md:flex-1 md:min-h-0">
           <KanbanBoard />
         </div>
       </main>

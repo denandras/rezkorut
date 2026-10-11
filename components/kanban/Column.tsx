@@ -90,7 +90,7 @@ export default function Column({
   // can be thrown in without opening it. Click to open.
   if (isCollapsed) {
     return (
-      <div className="flex min-w-[260px] max-w-[320px] flex-1 flex-col w-full md:w-auto h-full min-h-0">
+      <div className="flex flex-col w-full md:w-auto md:min-w-[260px] md:max-w-[320px] md:flex-1 md:h-full md:min-h-0">
         {header}
         <button
           ref={setNodeRef}
@@ -121,11 +121,11 @@ export default function Column({
   }
 
   return (
-    <div className="flex min-w-[260px] max-w-[320px] flex-1 flex-col w-full md:w-auto h-full min-h-0">
+    <div className="flex flex-col w-full md:w-auto md:min-w-[260px] md:max-w-[320px] md:flex-1 md:h-full md:min-h-0">
       {header}
       <div
         ref={setNodeRef}
-        className={`flex-1 rounded-xl border p-2 min-h-[200px] transition-colors overflow-y-auto ${
+        className={`rounded-xl border p-2 min-h-[200px] transition-colors md:flex-1 md:overflow-y-auto ${
           isMobile
             ? "border-neutral-border bg-neutral-dark/40"
             : isOver

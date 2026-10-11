@@ -27,6 +27,7 @@ export default function KanbanBoard() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [filter, setFilter] = useState("");
   const [openBoxes, setOpenBoxes] = useState(false);
+  const [archivingAll, setArchivingAll] = useState(false);
   const isMobile = useIsMobile();
 
   const sensors = useSensors(
@@ -173,6 +174,20 @@ export default function KanbanBoard() {
     }
   }
 
+  /** Bulk-archive every task in the Kész column (state stays reversible; completed_at kept). */
+  const doneTasks = tasks.filter((t) => t.state === "done");
+  async function handleArchiveAllDone() {
+    if (doneTasks.length === 0 || archivingAll) return;
+    if (!confirm(`Biztosan archiválod az összes kész feladatot (${doneTasks.length} db)?`)) return;
+    setArchivingAll(true);
+    const { error } = await supabase
+      .from("tasks")
+      .update({ state: "archived" })
+      .in("id", doneTasks.map((t) => t.id));
+    if (error) console.error("Archive-all error:", error);
+    setArchivingAll(false);
+  }
+
   const filteredTasks = (() => {
     const list = filter.trim()
       ? tasks.filter((t) =>
@@ -225,17 +240,28 @@ export default function KanbanBoard() {
   });
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col md:h-full md:min-h-0">
       {/* Header */}
       <div className="flex flex-col gap-3 mb-4 shrink-0">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-display text-lg font-bold text-neutral-100">Kanban</h2>
-          <button
-            onClick={() => setShowForm(true)}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-neutral-900 transition-opacity hover:opacity-80"
-          >
-            + Új feladat
-          </button>
+          <div className="flex items-center gap-2">
+            {doneTasks.length > 0 && (
+              <button
+                onClick={handleArchiveAllDone}
+                disabled={archivingAll}
+                className="shrink-0 whitespace-nowrap rounded-lg border border-neutral-border bg-neutral-dark px-3 py-2 text-sm font-medium text-neutral-200 transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
+              >
+                Készek archiválása ({doneTasks.length})
+              </button>
+            )}
+            <button
+              onClick={() => setShowForm(true)}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-neutral-900 transition-opacity hover:opacity-80"
+            >
+              + Új feladat
+            </button>
+          </div>
         </div>
         <input
           type="text"
