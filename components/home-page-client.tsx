@@ -225,10 +225,9 @@ export default function HomePageClient({
 
         {/* Közelgő események – single heading on the landing (user request 2026-10-11);
             /esemenyek keeps its two-level Koncertjeink/Közelgő + Archív display structure.
-            mt-12: on mobile the title block has no bottom padding, so without an
-            explicit gap this section sat jammed against the tagline. */}
+            py-12 on mobile = same top padding as the Legújabb kiadásaink section. */}
         {upcomingConcerts && upcomingConcerts.length > 0 && (
-          <section className="mt-12 px-6 md:mt-0 md:px-12" data-reveal>
+          <section className="px-6 py-12 md:px-12 md:py-0" data-reveal>
             <div className="mb-4 flex items-end justify-between gap-3">
               <h2 className="font-display text-3xl leading-[0.9] font-bold tracking-tight text-white uppercase">
                 Közelgő koncertjeink
