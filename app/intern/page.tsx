@@ -28,7 +28,7 @@ const links = [
   {
     title: "Infók, darabok, személyek",
     description: "Notion – együttes wiki",
-    href: "https://andrasdenes.notion.site/rezkorut?source=copy_link",
+    href: "https://rezkorut.notion.site/R-z-k-r-t-a6fb4a7d4bd8830b865081c4c1eb686a",
   },
 ];
 
