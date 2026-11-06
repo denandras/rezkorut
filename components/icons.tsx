@@ -186,3 +186,71 @@ export function IconFacebook(props: IconProps) {
     </svg>
   );
 }
+
+/* --- Intern hub icons (tool "logos") --- */
+
+export function IconKanban(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="3.5" width="4.8" height="17" rx="1.4" />
+      <rect x="9.6" y="3.5" width="4.8" height="12" rx="1.4" />
+      <rect x="16.2" y="3.5" width="4.8" height="8" rx="1.4" />
+    </IconBase>
+  );
+}
+
+export function IconWaveform(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M3 12h1.5" />
+      <path d="M7 8v8" />
+      <path d="M10.5 5v14" />
+      <path d="M14 9v6" />
+      <path d="M17.5 6.5v11" />
+      <path d="M21 12h-0.001" />
+    </IconBase>
+  );
+}
+
+export function IconGallery(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="8.5" cy="9.5" r="1.6" />
+      <path d="m3.5 17.5 4.7-4.6a2 2 0 0 1 2.8 0l3.6 3.5" />
+      <path d="m13 15.5 2.2-2.1a2 2 0 0 1 2.8 0l3 2.9" />
+    </IconBase>
+  );
+}
+
+export function IconScore(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M6 3.5h9.5L19 7v13.5H6z" />
+      <path d="M15 3.5V7h4" />
+      <path d="M8.5 15.5a1.4 1.4 0 1 0 1.4 1.4V10.4" />
+      <path d="M9.9 10.4l3.2-.7v5.2" />
+      <path d="M13.1 15a1.4 1.4 0 1 0 1.4 1.4" />
+    </IconBase>
+  );
+}
+
+export function IconDocs(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M3 8.2A1.7 1.7 0 0 1 4.7 6.5h4.1l1.6 2h7.9A1.7 1.7 0 0 1 20 10.2v8.3A1.7 1.7 0 0 1 18.3 20H4.7A1.7 1.7 0 0 1 3 18.3z" />
+      <path d="M7.2 13.4h9.6" />
+      <path d="M7.2 16.4h6" />
+    </IconBase>
+  );
+}
+
+export function IconInfo(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 10.8v5.4" />
+      <path d="M12 7.7h.01" />
+    </IconBase>
+  );
+}
