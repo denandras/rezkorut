@@ -170,7 +170,7 @@ export async function GET(request: Request) {
         entry.files += 1;
         if (isImage) {
           entry.images += 1;
-          if (!entry.cover || naturalCompare(rel, entry.coverName ?? "") > 0) {
+          if (!entry.cover || naturalCompare(rel, entry.coverName ?? "") < 0) {
             entry.cover = rec;
             entry.coverName = rel;
           }
@@ -210,7 +210,7 @@ export async function GET(request: Request) {
         return rest.length > 0 && !rest.includes("/");
       })
       .map(({ rec, rel }) => buildFile(rec, rel, tokenSecret))
-      .sort((a, b) => naturalCompare(b.name, a.name));
+      .sort((a, b) => naturalCompare(a.name, b.name));
 
     // Breadcrumbs for the client (root not included).
     const breadcrumbs: KepekFolder[] = [];
