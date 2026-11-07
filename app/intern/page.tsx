@@ -33,8 +33,8 @@ const links = [
   },
   {
     title: "Kották",
-    description: "Felhő – kották",
-    href: "https://storage.denandras.cloud/index.php/s/2q2NJXmc9p9MN7mm",
+    description: "Szeptett kottatár – PDF-ek letöltése",
+    href: "/intern/kottak",
     icon: IconScore,
   },
   {
