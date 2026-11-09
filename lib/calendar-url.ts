@@ -36,17 +36,35 @@ export function parseConcertDate(dateStr: string, timeStr?: string): Date | null
     }
   }
 
-  // Create a date in Budapest timezone, then convert to UTC.
-  const localStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`;
-  const utcDate = new Date(localStr);
-  const budapestDate = new Date(
-    utcDate.toLocaleString("en-US", { timeZone: "Europe/Budapest" }),
+  // Convert Budapest wall-clock time to UTC, independent of the server's TZ.
+  // First guess: treat the wall-clock time as UTC, then measure Budapest's
+  // offset at that instant via formatToParts (never re-parse a localized
+  // string with `new Date` — that resolves in the server's local zone).
+  const guessUtc = Date.UTC(year, month - 1, day, hours, minutes, 0);
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Budapest",
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const parts: Record<string, string> = {};
+  for (const p of fmt.formatToParts(new Date(guessUtc))) {
+    parts[p.type] = p.value;
+  }
+  const budapestWallUtc = Date.UTC(
+    parseInt(parts.year, 10),
+    parseInt(parts.month, 10) - 1,
+    parseInt(parts.day, 10),
+    parseInt(parts.hour, 10) % 24,
+    parseInt(parts.minute, 10),
+    parseInt(parts.second, 10),
   );
-  const serverDate = new Date(
-    utcDate.toLocaleString("en-US", { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
-  );
-  const offsetMs = serverDate.getTime() - budapestDate.getTime();
-  return new Date(utcDate.getTime() - offsetMs);
+  const offsetMs = budapestWallUtc - guessUtc;
+  return new Date(guessUtc - offsetMs);
 }
 
 /** Formats a Date as Google Calendar UTC timestamp: 20260912T170000Z */
