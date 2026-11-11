@@ -26,6 +26,8 @@ export type KottakFolder = {
   path: string;
   fileCount: number;
   totalSize: number;
+  /** Zip download of the whole folder incl. subfolders (token URL). */
+  zipUrl?: string;
 };
 
 const KIND_BY_EXT: Record<string, KottakKind> = {

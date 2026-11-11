@@ -141,19 +141,23 @@ export async function GET(request: Request) {
       ...Array.from(dirPrefixes).filter((dir) => parentPath(dir) === relPath),
     ]);
 
+    const exp = dayScopedExpiry();
+
     const folders: KottakFolder[] = Array.from(folderPaths)
       .map((dir) => {
         const entry = agg.get(dir);
+        const name = dir.split("/").pop() ?? dir;
         return {
-          name: dir.split("/").pop() ?? dir,
+          name,
           path: dir,
           fileCount: entry?.files ?? 0,
           totalSize: entry?.size ?? 0,
+          zipUrl: `/api/intern/kottak/zip?token=${encodeURIComponent(
+            createMediaAccessToken({ key: `${KOTTAK_ROOT}${dir}/`, name, exp }, tokenSecret),
+          )}`,
         };
       })
       .sort((a, b) => naturalCompare(sortKey(a.name), sortKey(b.name)));
-
-    const exp = dayScopedExpiry();
 
     const files: KottakFile[] = withRel
       .filter(({ rel }) => {
@@ -192,7 +196,22 @@ export async function GET(request: Request) {
       });
     }
 
-    return Response.json({ path: relPath, folders, files, breadcrumbs });
+    return Response.json({
+      path: relPath,
+      folders,
+      files,
+      breadcrumbs,
+      zipUrl: `/api/intern/kottak/zip?token=${encodeURIComponent(
+        createMediaAccessToken(
+          {
+            key: `${KOTTAK_ROOT}${relPath ? `${relPath}/` : ""}`,
+            name: relPath.split("/").pop() || "Kották",
+            exp,
+          },
+          tokenSecret,
+        ),
+      )}`,
+    });
   } catch {
     return Response.json({ error: "Nem sikerült betölteni a mappát." }, { status: 502 });
   }

@@ -193,12 +193,19 @@ export async function GET(request: Request) {
                 ),
               )}&w=480`
             : undefined;
+        const zipUrl = `/api/intern/kepek/zip?token=${encodeURIComponent(
+          createMediaAccessToken(
+            { key: `${KEPEK_ROOT}${dir}/`, name, exp: dayScopedExpiry() },
+            tokenSecret,
+          ),
+        )}`;
         return {
           name,
           path: dir,
           fileCount: entry.files,
           imageCount: entry.images,
           coverUrl,
+          zipUrl,
         };
       })
       .sort((a, b) => naturalCompare(b.name, a.name));
@@ -226,7 +233,22 @@ export async function GET(request: Request) {
       });
     }
 
-    return Response.json({ path: relPath, folders, files, breadcrumbs });
+    return Response.json({
+      path: relPath,
+      folders,
+      files,
+      breadcrumbs,
+      zipUrl: `/api/intern/kepek/zip?token=${encodeURIComponent(
+        createMediaAccessToken(
+          {
+            key: `${KEPEK_ROOT}${relPath ? `${relPath}/` : ""}`,
+            name: relPath.split("/").pop() || "Képek",
+            exp: dayScopedExpiry(),
+          },
+          tokenSecret,
+        ),
+      )}`,
+    });
   } catch {
     return Response.json(
       { error: "Nem sikerült betölteni a mappát." },

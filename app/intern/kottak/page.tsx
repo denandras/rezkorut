@@ -11,6 +11,7 @@ type Listing = {
   folders: KottakFolder[];
   files: KottakFile[];
   breadcrumbs: KottakFolder[];
+  zipUrl?: string;
 };
 
 function ChevronRight({ className }: { className?: string }) {
@@ -206,19 +207,31 @@ export default function KottakPage() {
           ))}
         </nav>
 
-        <div className="mb-4">
-          <h1 className="font-display text-lg font-bold text-neutral-100">
-            {path ? breadcrumbs[breadcrumbs.length - 1]?.name ?? path : "Kották"}
-          </h1>
-          {listing && (
-            <p className="mt-0.5 text-xs text-neutral-500">
-              Réz körút szeptett kottatár · {rootFolders.length} mappa ·{" "}
-              {rootFolders.reduce((sum, f) => sum + f.fileCount, 0) + files.length} fájl ·{" "}
-              {formatBytes(
-                rootFolders.reduce((sum, f) => sum + f.totalSize, 0) +
-                  files.reduce((sum, f) => sum + f.size, 0),
-              )}
-            </p>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="font-display text-lg font-bold text-neutral-100">
+              {path ? breadcrumbs[breadcrumbs.length - 1]?.name ?? path : "Kották"}
+            </h1>
+            {listing && (
+              <p className="mt-0.5 text-xs text-neutral-500">
+                Réz körút szeptett kottatár · {rootFolders.length} mappa ·{" "}
+                {rootFolders.reduce((sum, f) => sum + f.fileCount, 0) + files.length} fájl ·{" "}
+                {formatBytes(
+                  rootFolders.reduce((sum, f) => sum + f.totalSize, 0) +
+                    files.reduce((sum, f) => sum + f.size, 0),
+                )}
+              </p>
+            )}
+          </div>
+          {listing?.zipUrl && (listing.files.length > 0 || listing.folders.length > 0) && (
+            <a
+              href={listing.zipUrl}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+              aria-label="Mappa letöltése ZIP-ben (almappákkal együtt)"
+            >
+              <IconDownload className="size-3.5" />
+              ZIP
+            </a>
           )}
         </div>
 

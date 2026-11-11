@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import BottomNav from "@/components/bottom-nav";
 import KepekGallery from "@/components/kepek-gallery";
+import { IconDownload } from "@/components/icons";
 import { INTERN_PASSWORD, getInternAuth, setInternAuth } from "@/lib/intern-auth";
 import type { KepekFile, KepekFolder } from "@/lib/kepek";
 
@@ -11,6 +12,7 @@ type Listing = {
   folders: KepekFolder[];
   files: KepekFile[];
   breadcrumbs: KepekFolder[];
+  zipUrl?: string;
 };
 
 function FolderIcon({ className }: { className?: string }) {
@@ -184,16 +186,28 @@ export default function KepekPage() {
           ))}
         </nav>
 
-        <div className="mb-5">
-          <h1 className="font-display text-lg font-bold text-neutral-100">
-            {path ? breadcrumbs[breadcrumbs.length - 1]?.name ?? path : "Képek"}
-          </h1>
-          {listing && (
-            <p className="mt-0.5 text-xs text-neutral-500">
-              {folders.length > 0 && `${folders.length} mappa · `}
-              {files.length} fájl
-              {imageCount > 0 && ` · ${imageCount} kép`}
-            </p>
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="font-display text-lg font-bold text-neutral-100">
+              {path ? breadcrumbs[breadcrumbs.length - 1]?.name ?? path : "Képek"}
+            </h1>
+            {listing && (
+              <p className="mt-0.5 text-xs text-neutral-500">
+                {folders.length > 0 && `${folders.length} mappa · `}
+                {files.length} fájl
+                {imageCount > 0 && ` · ${imageCount} kép`}
+              </p>
+            )}
+          </div>
+          {listing?.zipUrl && (listing.files.length > 0 || listing.folders.length > 0) && (
+            <a
+              href={listing.zipUrl}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+              aria-label="Mappa letöltése ZIP-ben (almappákkal együtt)"
+            >
+              <IconDownload className="size-3.5" />
+              ZIP
+            </a>
           )}
         </div>
 

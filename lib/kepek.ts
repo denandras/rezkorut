@@ -51,6 +51,8 @@ export type KepekFolder = {
   fileCount: number;
   imageCount: number;
   coverUrl?: string;
+  /** Zip download of the whole folder incl. subfolders (token URL). */
+  zipUrl?: string;
 };
 
 export function fileExtension(name: string): string {
