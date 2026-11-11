@@ -223,7 +223,7 @@ export default function KottakPage() {
               </p>
             )}
           </div>
-          {listing?.zipUrl && (listing.files.length > 0 || listing.folders.length > 0) && (
+          {path !== "" && listing?.zipUrl && (listing.files.length > 0 || listing.folders.length > 0) && (
             <a
               href={listing.zipUrl}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
