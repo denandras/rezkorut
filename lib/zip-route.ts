@@ -8,8 +8,10 @@ import { verifyMediaAccessToken } from "@/lib/media-access-token";
 import { normalizeRelPath } from "@/lib/kepek";
 import { streamZip, type ZipEntry } from "@/lib/zip";
 
-/** Above this, a folder zip would never finish inside Hobby's 60s function cap. */
-const MAX_ZIP_BYTES = 2 * 1024 * 1024 * 1024; // 2 GiB
+/** Above this the zip stream gets cut mid-body by Vercel's 60 s function cap
+ *  (measured 2026-11-11: ~12.5 MB/s MinIO→Vercel ⇒ ~600 MB max; 1.2 GB was
+ *  truncated mid-stream and unzip failed). Keep well under, fail cleanly 413. */
+const MAX_ZIP_BYTES = 500 * 1024 * 1024; // 500 MiB
 
 /** RFC 5987 attachment header — keeps Hungarian/accented filenames intact. */
 function attachmentHeader(name: string) {
