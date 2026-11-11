@@ -1,8 +1,49 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IconDownload, IconExternalLink } from "@/components/icons";
 import type { KepekFile } from "@/lib/kepek";
+
+const DEFAULT_RATIO = 4 / 3;
+
+/** Column count by viewport, mirroring the old columns-2/md:3/xl:4. */
+function useColumnCount() {
+  const query = () => {
+    if (typeof window === "undefined") return 4;
+    if (window.matchMedia("(min-width: 1280px)").matches) return 4;
+    if (window.matchMedia("(min-width: 768px)").matches) return 3;
+    return 2;
+  };
+  const [count, setCount] = useState(query);
+  useEffect(() => {
+    const onResize = () => setCount(query());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return count;
+}
+
+/**
+ * Masonry with reading-order intent: each item goes into the column with the
+ * least accumulated height; ties go to the LEFTMOST column. So the first items
+ * sit side by side (1st left, 2nd next, …), then the following ones stack down
+ * under whichever column has the most room left.
+ */
+function distribute(files: KepekFile[], colCount: number, ratios: Map<string, number>): number[][] {
+  // Column width ~ (container/colCount); relative height = ratio (h/w) since
+  // widths per column are equal across columns.
+  const heights = new Array(colCount).fill(0 as number);
+  const cols: number[][] = Array.from({ length: colCount }, () => []);
+  files.forEach((file, index) => {
+    let target = 0;
+    for (let c = 1; c < colCount; c++) {
+      if (heights[c] < heights[target]) target = c;
+    }
+    cols[target].push(index);
+    heights[target] += ratios.get(file.path) ?? DEFAULT_RATIO;
+  });
+  return cols;
+}
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -49,19 +90,20 @@ function IconFilm({ className }: { className?: string }) {
 function Tile({
   file,
   index,
+  ratio,
   onOpen,
 }: {
   file: KepekFile;
   index: number;
+  ratio: number;
   onOpen: (index: number) => void;
 }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [ratio, setRatio] = useState<string>("4 / 3");
   const isImage = file.kind === "image" && !!file.thumbUrl;
 
   return (
-    <div className="mb-3 break-inside-avoid">
+    <div>
       <article className="group relative overflow-hidden rounded-xl border border-neutral-border bg-neutral-dark/40">
         <button
           type="button"
@@ -69,7 +111,7 @@ function Tile({
           className="block w-full cursor-pointer text-left"
           aria-label={`${file.name} megnyitása`}
         >
-          <div className="relative w-full" style={{ aspectRatio: ratio }}>
+          <div className="relative w-full" style={{ aspectRatio: `${ratio} / 1` }}>
             {isImage && !failed ? (
               <>
                 {!loaded && (
@@ -80,13 +122,7 @@ function Tile({
                   alt={file.name}
                   loading="lazy"
                   decoding="async"
-                  onLoad={(e) => {
-                    const img = e.currentTarget;
-                    if (img.naturalWidth && img.naturalHeight) {
-                      setRatio(`${img.naturalWidth} / ${img.naturalHeight}`);
-                    }
-                    setLoaded(true);
-                  }}
+                  onLoad={() => setLoaded(true)}
                   onError={() => setFailed(true)}
                   className={`absolute inset-0 h-full w-full object-cover ${
                     loaded ? "gallery-img-reveal" : "opacity-0"
@@ -146,6 +182,46 @@ function Tile({
 
 export default function KepekGallery({ files }: { files: KepekFile[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  // h/w ratios measured up front so the column layout is stable — tiles get
+  // their real aspect before any layout decision is made (no reshuffle flash).
+  const [ratios, setRatios] = useState<Map<string, number>>(new Map());
+  const colCount = useColumnCount();
+
+  useEffect(() => {
+    setRatios(new Map());
+    let cancelled = false;
+    const imgs = files.filter((f) => f.kind === "image" && f.thumbUrl);
+    let next = 0;
+    const found = new Map<string, number>();
+    const worker = () => {
+      if (cancelled) return;
+      const file = imgs[next++];
+      if (!file) {
+        if (found.size > 0) setRatios(new Map(found));
+        return;
+      }
+      const img = new Image();
+      const done = (fallback?: boolean) => {
+        if (cancelled) return;
+        if (!fallback && img.naturalWidth && img.naturalHeight) {
+          found.set(file.path, img.naturalHeight / img.naturalWidth);
+        }
+        worker();
+      };
+      img.onload = () => done();
+      img.onerror = () => done(true);
+      img.src = file.thumbUrl!;
+    };
+    for (let i = 0; i < 12; i++) worker();
+    return () => {
+      cancelled = true;
+    };
+  }, [files]);
+
+  const cols = useMemo(
+    () => distribute(files, colCount, ratios),
+    [files, colCount, ratios],
+  );
 
   const close = useCallback(() => setOpenIndex(null), []);
   const step = useCallback(
@@ -173,9 +249,22 @@ export default function KepekGallery({ files }: { files: KepekFile[] }) {
 
   return (
     <>
-      <div className="columns-2 gap-3 sm:columns-2 md:columns-3 xl:columns-4">
-        {files.map((file, index) => (
-          <Tile key={file.path} file={file} index={index} onOpen={setOpenIndex} />
+      <div className="flex items-start gap-3">
+        {cols.map((col, ci) => (
+          <div key={ci} className="flex min-w-0 flex-1 flex-col gap-3">
+            {col.map((index) => {
+              const file = files[index];
+              return (
+                <Tile
+                  key={file.path}
+                  file={file}
+                  index={index}
+                  ratio={ratios.get(file.path) ?? DEFAULT_RATIO}
+                  onOpen={setOpenIndex}
+                />
+              );
+            })}
+          </div>
         ))}
       </div>
 
