@@ -4,7 +4,6 @@ import { getMediaTokenSecret, getS4Config } from "@/lib/s4-config";
 import { verifyMediaAccessToken } from "@/lib/media-access-token";
 import { IMAGE_EXTENSIONS, KEPEK_ROOT, fileExtension } from "@/lib/kepek";
 
-export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const MIN_WIDTH = 200;
