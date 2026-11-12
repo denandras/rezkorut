@@ -71,7 +71,7 @@ export async function GET(request: Request) {
         "Content-Type": "image/jpeg",
         "Content-Length": String(thumb.byteLength),
         "Cache-Control":
-          "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+          "public, max-age=86400, s-maxage=691200, stale-while-revalidate=86400",
         "Content-Disposition": "inline",
         "X-Content-Type-Options": "nosniff",
       },

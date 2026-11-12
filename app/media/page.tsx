@@ -30,7 +30,11 @@ export type MediaItem = {
 };
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "gif", "avif"]);
-const MEDIA_TOKEN_TTL_MS = 60 * 60 * 1000; // 60 min — must exceed Cache-Control max-age
+/** Token/URL must be stable for days, not hours: Vercel caches file+thumb
+ *  responses by FULL URL, so a drifting exp invalidates origin each load.
+ *  Pin to a fixed 7-day epoch window identical to the intern kepek routes. */
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const mediaTokenExpiry = () => (Math.floor(Date.now() / WEEK_MS) + 2) * WEEK_MS;
 
 function isImageKey(key: string) {
   const ext = key.split(".").pop()?.toLowerCase();
@@ -90,7 +94,7 @@ async function getS3MediaItems(): Promise<MediaItem[]> {
     const ordinal = String(index + 1).padStart(3, "0");
     const safeName = `rezkorut-media-${ordinal}.${ext}`;
     const accessToken = createMediaAccessToken(
-      { key: entry.key, name: safeName, exp: Date.now() + MEDIA_TOKEN_TTL_MS },
+      { key: entry.key, name: safeName, exp: mediaTokenExpiry() },
       tokenSecret,
     );
     const encodedToken = encodeURIComponent(accessToken);

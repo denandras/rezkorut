@@ -21,15 +21,17 @@ type ObjectRec = { key: string; size: number; lastModified: number };
 const LIST_CACHE_TTL_MS = 60_000;
 let listCache: { at: number; objects: ObjectRec[] } | null = null;
 
-/**
- * Token URLs must be stable across a page load (and ideally the whole day)
- * so the browser can cache thumbnails. Expiry is pinned to a calendar-day
- * boundary instead of "now + N minutes".
+/*
+ * Token URLs must be stable for as long as possible — the Vercel edge caches
+ * thumb responses by FULL URL (token included), so every expiry change
+ * invalidates the cache and forces re-transfers of multi-MB originals from
+ * the home MinIO. Expiry is pinned to a fixed 7-DAY epoch window (stable
+ * across requests within the window, never "now + TTL" which drifts per
+ * request), so the cache can live out its s-maxage.
  */
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 function dayScopedExpiry(): number {
-  const nextMidnight = new Date();
-  nextMidnight.setHours(24, 0, 0, 0);
-  return nextMidnight.getTime() + 24 * 60 * 60 * 1000;
+  return (Math.floor(Date.now() / WEEK_MS) + 2) * WEEK_MS;
 }
 
 function makeClient(cfg: NonNullable<ReturnType<typeof getS4Config>>) {
