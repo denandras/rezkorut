@@ -11,6 +11,7 @@ import {
   IconWaveform,
 } from "@/components/icons";
 import { INTERN_PASSWORD, getInternAuth, setInternAuth } from "@/lib/intern-auth";
+import { InternTitle } from "@/components/intern-title";
 
 const links = [
   {
@@ -82,12 +83,7 @@ export default function InternPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background-dark px-6">
         <div className="w-full max-w-xs">
-          <p className="font-display mb-1 text-xs font-bold tracking-[0.2em] text-primary uppercase">
-            Réz körút
-          </p>
-          <h1 className="font-display mb-6 text-2xl font-bold text-neutral-100">
-            Intern
-          </h1>
+          <InternTitle />
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <input
               type="password"
@@ -115,12 +111,7 @@ export default function InternPage() {
     <div className="min-h-screen bg-background-dark">
       <main className="px-4 pb-24 pt-12 md:flex md:min-h-screen md:items-center md:justify-center md:pt-0">
         <div className="w-full max-w-md mx-auto md:max-w-sm">
-          <p className="font-display mb-1 text-xs font-bold tracking-[0.2em] text-primary uppercase">
-            Réz körút
-          </p>
-          <h1 className="font-display mb-6 text-2xl font-bold text-neutral-100">
-            Intern
-          </h1>
+          <InternTitle />
           <div className="flex flex-col gap-3">
             {links.map((link) => {
               const isInternal = link.href.startsWith("/");

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import BottomNav from "@/components/bottom-nav";
 import { INTERN_PASSWORD, getInternAuth, setInternAuth } from "@/lib/intern-auth";
+import { InternTitle } from "@/components/intern-title";
 
 type MediaFile = {
   name: string;
@@ -144,10 +145,7 @@ export default function MediaBrowserPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background-dark px-6">
         <div className="w-full max-w-xs">
-          <p className="font-display mb-1 text-xs font-bold tracking-[0.2em] text-primary uppercase">
-            Réz körút
-          </p>
-          <h1 className="font-display mb-6 text-2xl font-bold text-neutral-100">Intern</h1>
+          <InternTitle />
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <input
               type="password"
