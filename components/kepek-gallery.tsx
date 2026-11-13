@@ -114,9 +114,7 @@ function Tile({
           <div className="relative w-full" style={{ aspectRatio: `${ratio} / 1` }}>
             {isImage && !failed ? (
               <>
-                {!loaded && (
-                  <div className="absolute inset-0 animate-pulse bg-[#143d14]/40" />
-                )}
+                <div className="absolute inset-0 bg-[#0f2a1a]" />
                 <img
                   src={file.thumbUrl}
                   alt={file.name}

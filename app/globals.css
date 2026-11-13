@@ -138,21 +138,19 @@ body {
   }
 }
 
-/* Gallery image fade-in: image starts invisible, fades in on load */
+/* Gallery image fade-in: opacity only — no zoom/scale (reads as flashing) */
 @keyframes gallery-fade-in {
   from {
     opacity: 0;
-    transform: scale(1.02);
   }
   to {
     opacity: 1;
-    transform: scale(1);
   }
 }
 
 .gallery-img-reveal {
   opacity: 0;
-  animation: gallery-fade-in 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: gallery-fade-in 300ms ease-out forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
