@@ -207,19 +207,51 @@ export default function HomePageClient({
               <h1 className="font-display mb-4 text-6xl font-bold leading-none tracking-tighter text-white md:text-8xl">
                 Réz körút
               </h1>
-              <div className="mb-3 flex items-center gap-3">
-                <div className="h-px w-10 bg-primary" />
-                <p className="font-display text-xs font-bold tracking-[0.22em] text-primary uppercase md:text-sm">
-                  Rézfúvós szeptett
+              <div className="relative w-fit">
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="h-px w-10 bg-primary" />
+                  <p className="font-display text-xs font-bold tracking-[0.22em] text-primary uppercase md:text-sm">
+                    Rézfúvós szeptett
+                  </p>
+                </div>
+                <p
+                  className="font-display text-2xl font-light italic text-neutral-300 md:text-3xl"
+                  data-reveal
+                  style={{ "--reveal-delay": "180ms" } as React.CSSProperties}
+                >
+                  Megállítjuk az időt.
                 </p>
+                {/* Trumpet mark - transparent render (megallitott-ido rig,
+                    Aedrian1 model, CC BY 4.0). Absolutely positioned beside
+                    the two-line text column, vertically centered on it:
+                    out of flow, so vertical spacing stays identical to the
+                    original layout on every platform. Width clamps to the
+                    viewport so it hugs the text and never overflows. */}
+                <div
+                  className="absolute left-full top-1/2 ml-1.5 w-[clamp(48px,calc(100vw-282px),176px)] -translate-y-1/2 md:ml-[18px]"
+                  aria-hidden="true"
+                >
+                  <style>{`
+                    @media (prefers-reduced-motion: no-preference) {
+                      @keyframes trumpetMarkFloat {
+                        0%, 100% { transform: rotate(-1.2deg) translateY(0); }
+                        50% { transform: rotate(1.2deg) translateY(-3px); }
+                      }
+                      .trumpet-mark-float {
+                        animation: trumpetMarkFloat 6s ease-in-out infinite;
+                        transform-origin: 50% 60%;
+                      }
+                    }
+                  `}</style>
+                  <Image
+                    src="/trumpet-mark.png"
+                    alt=""
+                    width={640}
+                    height={280}
+                    className="trumpet-mark-float h-auto w-full"
+                  />
+                </div>
               </div>
-              <p
-                className="font-display text-2xl font-light italic text-neutral-300 md:text-3xl"
-                data-reveal
-                style={{ "--reveal-delay": "180ms" } as React.CSSProperties}
-              >
-                Megállítjuk az időt.
-              </p>
             </div>
         </div>
 
@@ -346,6 +378,9 @@ export default function HomePageClient({
           </div>
           <p className="text-xs text-neutral-500">
             Réz körút © {new Date().getFullYear()} • Rézfúvós szeptett portfólió • Budapest, Magyarország
+          </p>
+          <p className="mt-1 text-right text-xs text-neutral-500">
+            Trumpet 3D: Aedrian1 (CC BY 4.0)
           </p>
         </footer>
       </main>
