@@ -242,7 +242,9 @@ export default function MediaBrowserPage() {
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/[0.10] text-primary">
                     <IconFolder className="size-4.5" />
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-neutral-100">{folder}</span>
+                  <span className="line-clamp-2 min-w-0 flex-1 text-[14px] font-medium leading-snug text-neutral-100">
+                    {folder}
+                  </span>
                   <IconChevronRight className="size-4 shrink-0 text-neutral-600" />
                 </button>
               </li>
@@ -269,7 +271,7 @@ export default function MediaBrowserPage() {
                 <div className="min-w-0 flex-1">
                   <button
                     onClick={() => file.playable && playFile(file)}
-                    className={`block w-full truncate text-left text-[14px] font-medium text-neutral-100 ${
+                    className={`block w-full text-left text-[14px] font-medium leading-snug text-neutral-100 line-clamp-2 ${
                       file.playable ? "cursor-pointer hover:text-primary" : "cursor-default"
                     }`}
                     disabled={!file.playable}
