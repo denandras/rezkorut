@@ -31,6 +31,13 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    // The page was renamed Beosztás → Próbarend; keep old links and bookmarks working.
+    return [
+      { source: "/intern/beosztas", destination: "/intern/probarend", permanent: false },
+      { source: "/intern/beosztas/:path*", destination: "/intern/probarend/:path*", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

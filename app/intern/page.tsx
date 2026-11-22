@@ -7,6 +7,7 @@ import {
   IconGallery,
   IconInfo,
   IconKanban,
+  IconSchedule,
   IconScore,
   IconWaveform,
 } from "@/components/icons";
@@ -19,6 +20,12 @@ const links = [
     description: "Feladatkezelő – kották, próbák, koncertek",
     href: "/intern/kanban",
     icon: IconKanban,
+  },
+  {
+    title: "Próbarend",
+    description: "Próba-időpontok – ki ér rá mikor",
+    href: "/intern/probarend",
+    icon: IconSchedule,
   },
   {
     title: "Felvételek",

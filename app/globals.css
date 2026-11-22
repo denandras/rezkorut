@@ -7,6 +7,15 @@
   --color-neutral-dark: #0e2016;
   --color-neutral-border: #1a3828;
   --color-charcoal: #06100a;
+  /* schedule (/intern/beosztas) state colours — lightened for dark backgrounds */
+  --color-state-yes: #86e3a0;
+  --color-state-maybe: #e6be5f;
+  --color-state-no: #ed9a91;
+  --color-state-none: #94a29a;
+  --color-ink-body: #e6ebe7;
+  --color-ink-muted: #9aa79e;
+  --color-ink-faint: #7d8b82;
+  --color-sched-cell: #14281c;
   --font-sans: var(--font-lexend-deca);
 }
 

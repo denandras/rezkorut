@@ -254,3 +254,87 @@ export function IconInfo(props: IconProps) {
     </IconBase>
   );
 }
+
+/* ---------- /intern/probarend icons (design spec §0) ---------- */
+
+export function IconEye(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="2.6" />
+    </IconBase>
+  );
+}
+
+export function IconEyeOff(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M3 3l18 18" />
+      <path d="M10.6 6.1A9.9 9.9 0 0 1 12 6c6.4 0 10 6 10 6a17 17 0 0 1-3 3.7" />
+      <path d="M6.5 7.6A16.7 16.7 0 0 0 2 12s3.6 6 10 6a9.8 9.8 0 0 0 4.4-1" />
+      <path d="M9.9 10.1a2.9 2.9 0 0 0 4.1 4.1" />
+    </IconBase>
+  );
+}
+
+export function IconChevronLeft(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M15 19l-7-7 7-7" />
+    </IconBase>
+  );
+}
+
+export function IconChevronRight(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M9 5l7 7-7 7" />
+    </IconBase>
+  );
+}
+
+export function IconCheck(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M4.5 12.5l5 5 10-11" />
+    </IconBase>
+  );
+}
+
+export function IconClose(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </IconBase>
+  );
+}
+
+export function IconPencil(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3z" />
+      <path d="M14.5 6.5l3 3" />
+    </IconBase>
+  );
+}
+
+export function IconQuestion(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M9 9a3 3 0 1 1 4.2 2.7c-.8.4-1.2 1-1.2 2v.6" />
+      <path d="M12 18h.01" />
+    </IconBase>
+  );
+}
+
+/** Availability schedule: a month card with a checked cell. */
+export function IconSchedule(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M8 3v4M16 3v4" />
+      <path d="m9 15 1.8 1.8L15 12.8" />
+    </IconBase>
+  );
+}
