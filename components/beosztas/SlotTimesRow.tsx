@@ -83,11 +83,8 @@ export default function SlotTimesRow({
             >
               <span className="text-center text-[12px] leading-tight tabular-nums text-ink-muted">
                 <span className="hidden sm:inline">{s.label}</span>
-                <span className="sm:hidden">
-                  {s.start}
-                  <span className="mx-0.5 text-ink-faint">–</span>
-                  {s.end}
-                </span>
+                {/* on phones the column is 73px wide: "09–12" stays on one line */}
+                <span className="sm:hidden">{s.short}</span>
               </span>
               <IconPencil className="size-3 shrink-0 text-ink-faint" />
             </button>
