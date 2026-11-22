@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import crypto from "node:crypto";
 
 /*
@@ -12,7 +12,13 @@ import crypto from "node:crypto";
 
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  // Same cookie gate as every /intern page: without it anyone on the internet
+  // could post rehearsals into the band calendar.
+  if (req.cookies.get("rezkorut-intern-auth")?.value !== "1") {
+    return NextResponse.json({ ok: false, error: "Bejelentkezés szükséges." }, { status: 401 });
+  }
+
   const url = process.env.CALENDAR_WEBHOOK_URL;
   const secret = process.env.CALENDAR_WEBHOOK_SECRET;
 
