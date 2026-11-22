@@ -168,3 +168,16 @@ body {
     animation: none;
   }
 }
+
+/* iOS Safari zooms into any focused field whose font-size is below 16px, then
+   leaves the page scaled in. Keep every text field at 16px on small screens so
+   focusing one never zooms. Tailwind's text-[13px] utilities would win on
+   specificity, hence !important — the rule is deliberately narrow: phones only,
+   text fields only. */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
