@@ -281,12 +281,10 @@ export default function BeosztasBoard({
             </div>
           </div>
 
-          {/* row 2: legend + slot key + live caption (desktop shows all; mobile legend only) */}
+          {/* row 2: legend + editable slot times — shown on every screen size */}
           <div className="flex flex-col gap-2">
             <StateLegend />
-            <div className="hidden items-center justify-between gap-3 lg:flex">
-              <SlotTimesRow slots={d.slots} onSave={d.updateSlot} />
-            </div>
+            <SlotTimesRow slots={d.slots} onSave={d.updateSlot} />
           </div>
         </div>
       </div>
