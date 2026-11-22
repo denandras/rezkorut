@@ -1,14 +1,14 @@
 "use client";
 
-import { IconCheck, IconClose, IconQuestion } from "@/components/icons";
+import { IconCheck, IconClose, IconMinus, IconQuestion } from "@/components/icons";
 import { ariaChecked, metaOf, stateCellClasses, type CellState } from "@/components/beosztas/state";
 
 /*
  * The cell (design spec §4.1). The ONLY file with the four state class
  * recipes — it imports them from state.ts so the legend can't drift.
  *
- * Rule: unanswered is an EMPTY pill (no glyph, no state colour). Zero (no) is
- * a coral cross. That is the zero-vs-null distinction made visible.
+ * Rule: unanswered is a faint MINUS in the empty pill (no state colour). Zero
+ * (no) is a coral cross. That is the zero-vs-null distinction made visible.
  */
 
 export interface SlotButtonProps {
@@ -31,7 +31,13 @@ function Glyph({ state, size = 15 }: { state: CellState; size?: number }) {
   if (state === "yes") return <IconCheck className="shrink-0" style={{ width: size, height: size }} />;
   if (state === "maybe") return <IconQuestion className="shrink-0" style={{ width: size, height: size }} />;
   if (state === "no") return <IconClose className="shrink-0" style={{ width: size, height: size }} />;
-  return null;
+  // Unmarked is a minus, not a blank: the four states stay readable at a glance.
+  return (
+    <IconMinus
+      className="shrink-0 text-ink-faint opacity-70"
+      style={{ width: size, height: size }}
+    />
+  );
 }
 
 export default function SlotButton({

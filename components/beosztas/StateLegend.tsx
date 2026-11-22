@@ -1,11 +1,11 @@
 "use client";
 
-import { IconCheck, IconClose, IconQuestion } from "@/components/icons";
+import { IconCheck, IconClose, IconMinus, IconQuestion } from "@/components/icons";
 import { stateCellClasses, type CellState } from "@/components/beosztas/state";
 
 /*
  * Legend (§1.1). Swatches use the same recipe as the cells, so it can't drift.
- * Unanswered swatch is the empty pill with a faint dash — read as absence.
+ * Unanswered swatch is the empty pill with a faint minus — read as absence.
  */
 export default function StateLegend({ className = "" }: { className?: string }) {
   const items: { state: CellState; label: string; aria: string }[] = [
@@ -25,7 +25,7 @@ export default function StateLegend({ className = "" }: { className?: string }) 
             {it.state === "yes" && <IconCheck className="size-2.5" />}
             {it.state === "maybe" && <IconQuestion className="size-2.5" />}
             {it.state === "no" && <IconClose className="size-2.5" />}
-            {it.state === null && <span className="text-[#7d8b82]" aria-hidden="true">–</span>}
+            {it.state === null && <IconMinus className="size-2.5 text-[#7d8b82]" />}
           </span>
           <span aria-hidden="true">{it.label}</span>
         </li>

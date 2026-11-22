@@ -365,3 +365,11 @@ export function IconVideo(props: IconProps) {
     </IconBase>
   );
 }
+
+export function IconMinus(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M5 12h14" />
+    </IconBase>
+  );
+}
