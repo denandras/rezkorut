@@ -96,6 +96,9 @@ export default function LoadPanel({
   // stale project name can never leak into the next set of events.
   const [project, setProject] = useState("");
   const projectOk = project.trim().length > 0;
+  // Why a send could not start. Only set by an actual click on Naptárba, never
+  // by opening the panel or selecting things.
+  const [sendError, setSendError] = useState<string | null>(null);
   useEffect(() => {
     try {
       window.localStorage.removeItem("beosztas_project");
@@ -283,7 +286,10 @@ export default function LoadPanel({
             <input
               id="project-title"
               value={project}
-              onChange={(e) => setProject(e.target.value)}
+              onChange={(e) => {
+                setProject(e.target.value);
+                if (sendError) setSendError(null);
+              }}
               placeholder="BMC"
               className="h-10 w-full min-w-0 rounded-lg border border-neutral-border bg-[#0b1a10] px-3 text-[14px] text-neutral-100 outline-none transition-colors placeholder:text-ink-faint focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40"
             />
@@ -293,8 +299,6 @@ export default function LoadPanel({
               <span className="text-ink-faint">
                 A naptárban: <span className="text-ink-muted">{eventTitle}</span> + a hiányzók neve
               </span>
-            ) : selected.length > 0 ? (
-              <span className="text-[#ed9a91]">A naptárba küldéshez add meg a projekt nevét.</span>
             ) : (
               <span className="text-ink-faint">A naptárban: Réz krt + a projekt neve</span>
             )}
@@ -429,15 +433,16 @@ export default function LoadPanel({
                         row={r}
                         slots={slots}
                         checked={!excluded.has(`${r.day}|${r.slot}`)}
-                        onToggle={() =>
+                        onToggle={() => {
+                          if (sendError) setSendError(null);
                           setExcluded((prev) => {
                             const next = new Set(prev);
                             const k = `${r.day}|${r.slot}`;
                             if (next.has(k)) next.delete(k);
                             else next.add(k);
                             return next;
-                          })
-                        }
+                          });
+                        }}
                       />
                     ))}
                   </div>
@@ -488,15 +493,32 @@ export default function LoadPanel({
             </button>
             <button
               type="button"
-              disabled={selected.length === 0 || !projectOk}
-              onClick={() => setConfirmSend(true)}
-              className="order-1 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-5 text-[14px] font-semibold text-[#0b1a10] transition-opacity hover:opacity-90 disabled:opacity-40 sm:order-2"
+              onClick={() => {
+                if (selected.length === 0) {
+                  setSendError("Jelölj ki legalább egy időpontot a naptárba küldéshez.");
+                  return;
+                }
+                if (!projectOk) {
+                  setSendError("A naptárba küldéshez add meg a projekt nevét.");
+                  document.getElementById("project-title")?.focus();
+                  return;
+                }
+                setSendError(null);
+                setConfirmSend(true);
+              }}
+              className={`order-1 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-5 text-[14px] font-semibold text-[#0b1a10] transition-opacity hover:opacity-90 sm:order-2 ${
+                selected.length === 0 || !projectOk ? "opacity-70" : ""
+              }`}
             >
               <IconCalendar className="size-4" />
               Naptárba ({selected.length})
             </button>
           </div>
         )}
+
+        {sendError ? (
+          <p role="alert" className="mt-2 text-[12.5px] text-[#ed9a91]">{sendError}</p>
+        ) : null}
 
         {sendResult ? (
           <p className={`mt-2 text-[12.5px] ${sendFailed ? "text-[#ed9a91]" : "text-ink-muted"}`}>{sendResult}</p>
