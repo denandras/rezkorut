@@ -270,8 +270,39 @@ export default function LoadPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+        {/* project name comes FIRST: it is what the whole panel is for */}
+        <div>
+          <label
+            htmlFor="project-title"
+            className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-faint"
+          >
+            Projekt neve
+          </label>
+          <div className="mt-1.5 flex items-center gap-2">
+            <span className="shrink-0 text-[13.5px] text-ink-muted">Réz krt</span>
+            <input
+              id="project-title"
+              value={project}
+              onChange={(e) => setProject(e.target.value)}
+              placeholder="BMC"
+              className="h-10 w-full min-w-0 rounded-lg border border-neutral-border bg-[#0b1a10] px-3 text-[14px] text-neutral-100 outline-none transition-colors placeholder:text-ink-faint focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+            />
+          </div>
+          <p className="mt-1.5 text-[11.5px]">
+            {projectOk ? (
+              <span className="text-ink-faint">
+                A naptárban: <span className="text-ink-muted">{eventTitle}</span> + a hiányzók neve
+              </span>
+            ) : selected.length > 0 ? (
+              <span className="text-[#ed9a91]">A naptárba küldéshez add meg a projekt nevét.</span>
+            ) : (
+              <span className="text-ink-faint">A naptárban: Réz krt + a projekt neve</span>
+            )}
+          </p>
+        </div>
+
         {/* minimum people */}
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-faint">Minimum létszám</p>
+        <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-faint">Minimum létszám</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {presets.map((n) => (
             <button
@@ -415,35 +446,6 @@ export default function LoadPanel({
             })}
           </div>
         )}
-      </div>
-
-      {/* project name: becomes the calendar title ("Réz krt <name> -WhoIsOut") */}
-      <div className="border-t border-neutral-border px-4 pt-3 sm:px-5">
-        <label
-          htmlFor="project-title"
-          className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-faint"
-        >
-          Projekt neve
-        </label>
-        <div className="mt-1.5 flex items-center gap-2">
-          <span className="shrink-0 text-[13.5px] text-ink-muted">Réz krt</span>
-          <input
-            id="project-title"
-            value={project}
-            onChange={(e) => setProject(e.target.value)}
-            placeholder="BMC"
-            className="h-10 w-full min-w-0 rounded-lg border border-neutral-border bg-[#0b1a10] px-3 text-[14px] text-neutral-100 outline-none transition-colors placeholder:text-ink-faint focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40"
-          />
-        </div>
-        <p className="mt-1.5 text-[11.5px] text-ink-faint">
-          {projectOk ? (
-            <>
-              A naptárban: <span className="text-ink-muted">{eventTitle}</span> + a hiányzók neve
-            </>
-          ) : (
-            <span className="text-[#ed9a91]">A naptárba küldéshez add meg a projekt nevét.</span>
-          )}
-        </p>
       </div>
 
       {/* footer — sending to the calendar is the primary action, CSV is secondary */}
