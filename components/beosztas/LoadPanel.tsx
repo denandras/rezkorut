@@ -111,18 +111,20 @@ export default function LoadPanel({
   const [cursor, setCursor] = useState<{ year: number; month: number }>({ year, month });
 
   const total = people.length;
-  // Presets run from 5 up to the number of people CURRENTLY SHOWN in the chart,
-  // gapless: with 8 shown that is 5/6/7/8. The maximum can never ask for more
-  // people than the chart contains.
-  const presets = useMemo(() => {
-    const from = total >= 5 ? 5 : 1;
-    return Array.from({ length: Math.max(0, total - from + 1) }, (_, i) => from + i);
-  }, [total]);
+  // Presets run from 2 up to the number of people CURRENTLY SHOWN in the chart,
+  // gapless: with 9 shown that is 2/3/4/5/6/7/8/9. Two is the floor because one
+  // person agreeing is not a rehearsal; the top can never ask for more people
+  // than the chart contains. A lone person degrades to 1.
+  const lo = total >= 2 ? 2 : Math.max(1, total);
+  const presets = useMemo(
+    () => (total === 0 ? [] : Array.from({ length: total - lo + 1 }, (_, i) => lo + i)),
+    [total, lo],
+  );
 
   // Keep the minimum inside the band WITHOUT writing state on mount: a plain
   // useEffect here reset `min` to 1 (the first paint clamps against a total of
   // 0 before people load), which matched every slot. Derive it instead.
-  const effectiveMin = Math.min(Math.max(1, min), Math.max(1, total));
+  const effectiveMin = Math.min(Math.max(lo, min), Math.max(lo, total));
 
   const monthDays = useMemo(() => monthDates(cursor.year, cursor.month).map(toISODate), [cursor]);
   const todayISO = toISODate(new Date());
@@ -284,33 +286,8 @@ export default function LoadPanel({
               }`}
             >
               {n}
-              {n === total ? <span className="ml-1 text-[11px] font-normal text-ink-faint">fő</span> : null}
             </button>
           ))}
-          {/* Stepper only when the presets don't cover the current minimum. */}
-          {!presets.includes(effectiveMin) && (
-            <div className="ml-1 flex items-center gap-1 rounded-full border border-neutral-border bg-[#14281c] p-1">
-              <button
-                type="button"
-                aria-label="Kevesebb ember"
-                onClick={() => setMin((m) => Math.max(1, m - 1))}
-                disabled={min <= 1}
-                className="flex size-9 items-center justify-center rounded-full text-[17px] leading-none text-ink-muted transition-colors hover:text-neutral-100 disabled:opacity-35"
-              >
-                −
-              </button>
-              <span className="w-8 text-center text-[13.5px] font-semibold tabular-nums text-neutral-100">{min}</span>
-              <button
-                type="button"
-                aria-label="Több ember"
-                onClick={() => setMin((m) => Math.min(total, m + 1))}
-                disabled={min >= total}
-                className="flex size-9 items-center justify-center rounded-full text-[17px] leading-none text-ink-muted transition-colors hover:text-neutral-100 disabled:opacity-35"
-              >
-                +
-              </button>
-            </div>
-          )}
         </div>
 
         {/* period */}
