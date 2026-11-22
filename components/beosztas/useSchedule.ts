@@ -501,6 +501,13 @@ export function useSchedule(): ScheduleData {
    */
   const clearRange = useCallback(async (personIds: string[], days: string[]) => {
     if (personIds.length === 0 || days.length === 0) return 0;
+    // Hard rule: a bulk delete belongs to exactly one person (the one whose
+    // calendar is open). Anything wider is a caller bug that would destroy
+    // someone else's marks, so refuse instead of guessing.
+    if (personIds.length > 1) {
+      console.error("clearRange refused: expected one person, got", personIds.length);
+      return 0;
+    }
     let removed = 0;
     for (const day of days) {
       const { data, error: e } = await supabase

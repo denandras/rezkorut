@@ -138,15 +138,16 @@ export default function BeosztasBoard({
     return n;
   }, [selectedPerson, viewDays, d.marks, d.slots]);
 
+  // Deleting is always scoped to the person whose calendar is open — never to
+  // "everyone visible in the range".
   const clearableCount = useMemo(() => {
+    if (!selectedPerson) return 0;
     let n = 0;
     for (const day of viewDays) {
-      for (const p of visiblePeopleAZ) {
-        for (const s of d.slots) if (d.marks.has(markKey(p.id, day, s.id))) n += 1;
-      }
+      for (const s of d.slots) if (d.marks.has(markKey(selectedPerson.id, day, s.id))) n += 1;
     }
     return n;
-  }, [viewDays, visiblePeopleAZ, d.marks, d.slots]);
+  }, [selectedPerson, viewDays, d.marks, d.slots]);
 
   const runAbsent = useCallback(async () => {
     if (!selectedPerson) return;
@@ -157,12 +158,12 @@ export default function BeosztasBoard({
   }, [d, selectedPerson, viewDays]);
 
   const runClear = useCallback(async () => {
-    if (viewDays.length === 0) return;
+    if (!selectedPerson || viewDays.length === 0) return;
     setBulkBusy(true);
-    const n = await d.clearRange(visiblePeopleAZ.map((p) => p.id), viewDays);
+    await d.clearRange([selectedPerson.id], viewDays);
     setBulkBusy(false);
     setBulkConfirm(null);
-  }, [d, visiblePeopleAZ, viewDays]);
+  }, [d, selectedPerson, viewDays]);
 
   const dayCounts = useCallback(
     (isoDay: string): DayCounts => {
@@ -346,7 +347,7 @@ export default function BeosztasBoard({
               onClick={() => setBulkConfirm("clear")}
               className="h-11 rounded-full border border-neutral-border px-4 text-[13px] font-medium text-[#ed9a91] transition-colors hover:border-[#ed9a91]/50 disabled:opacity-40"
             >
-              Láthatók törlése{clearableCount ? ` (${clearableCount})` : ""}
+              Jelölések törlése{clearableCount ? ` (${clearableCount})` : ""}
             </button>
           </div>
         ) : (
@@ -354,7 +355,7 @@ export default function BeosztasBoard({
             <p className="text-[13px] leading-snug text-neutral-100">
               {bulkConfirm === "absent"
                 ? `${selectedPerson?.name}: ${unmarkedForSelected} jelöletlen cella lesz „nem ér rá”. A meglévő jelölések nem változnak.`
-                : `${clearableCount} jelölés törlődik ${visiblePeopleAZ.length} látható személytől (${rangeLabel}). Ez nem visszavonható.`}
+                : `${selectedPerson?.name}: ${clearableCount} jelölés törlődik (${rangeLabel}). Más ember jelölései nem változnak. Ez nem visszavonható.`}
             </p>
             {/* right-aligned: Mégse on the left, Igen on the right */}
             <div className="flex shrink-0 justify-end gap-2">
