@@ -4,6 +4,17 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import BottomNav from "@/components/bottom-nav";
 import { INTERN_PASSWORD, getInternAuth, setInternAuth } from "@/lib/intern-auth";
 import { InternTitle } from "@/components/intern-title";
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconClose,
+  IconDocs,
+  IconDownload,
+  IconFolder,
+  IconMusicNote,
+  IconPlay,
+  IconVideo,
+} from "@/components/icons";
 
 type MediaFile = {
   name: string;
@@ -22,10 +33,10 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
-function fileIcon(contentType: string) {
-  if (contentType.startsWith("audio")) return "🎵";
-  if (contentType.startsWith("video")) return "🎬";
-  return "📄";
+function FileTypeIcon({ contentType, className }: { contentType: string; className?: string }) {
+  if (contentType.startsWith("audio")) return <IconMusicNote className={className} />;
+  if (contentType.startsWith("video")) return <IconVideo className={className} />;
+  return <IconDocs className={className} />;
 }
 
 export default function MediaBrowserPage() {
@@ -177,9 +188,7 @@ export default function MediaBrowserPage() {
               onClick={goBack}
               className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-primary transition-colors"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
+              <IconChevronLeft className="size-3.5" />
               Vissza a mappákhoz
             </button>
           )}
@@ -187,9 +196,7 @@ export default function MediaBrowserPage() {
             href="/intern"
             className={`inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-primary transition-colors ${currentFolder ? "ml-auto" : ""}`}
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
+            <IconChevronLeft className="size-3.5" />
             Vissza az internhez
           </a>
         </div>
@@ -220,31 +227,27 @@ export default function MediaBrowserPage() {
           </div>
         )}
 
-        {/* Folder list */}
+        {/* Folder list — one row per folder, on every screen size */}
         {!loading && !loadError && !currentFolder && (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          <ul className="flex flex-col gap-1.5">
             {folders.length === 0 && (
-              <p className="col-span-full text-center text-sm text-neutral-600 py-8">
-                Nincsenek felvételek.
-              </p>
+              <li className="py-8 text-center text-[13px] text-neutral-600">Nincsenek felvételek.</li>
             )}
             {folders.map((folder) => (
-              <button
-                key={folder}
-                onClick={() => openFolder(folder)}
-                className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-neutral-border bg-neutral-dark/60 px-3 py-4 text-center transition-colors hover:border-primary/50 hover:bg-neutral-dark"
-              >
-                <svg className="size-5 shrink-0 text-primary/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-                </svg>
-                <span className="w-full min-w-0">
-                  <span className="block text-xs font-medium text-neutral-100 leading-snug">
-                    {folder}
+              <li key={folder}>
+                <button
+                  onClick={() => openFolder(folder)}
+                  className="flex w-full items-center gap-3 rounded-xl border border-neutral-border bg-neutral-dark/50 px-3 py-3 text-left transition-colors hover:border-primary/40 hover:bg-neutral-dark"
+                >
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/[0.10] text-primary">
+                    <IconFolder className="size-4.5" />
                   </span>
-                </span>
-              </button>
+                  <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-neutral-100">{folder}</span>
+                  <IconChevronRight className="size-4 shrink-0 text-neutral-600" />
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
 
         {/* File list */}
@@ -258,39 +261,41 @@ export default function MediaBrowserPage() {
             {files.map((file) => (
               <div
                 key={file.key}
-                className="flex items-center gap-3 rounded-xl border border-neutral-border bg-neutral-dark/60 px-4 py-3 transition-colors hover:border-neutral-500"
+                className="flex items-center gap-3 rounded-xl border border-neutral-border bg-neutral-dark/50 px-3 py-2.5 transition-colors hover:border-primary/40"
               >
-                <span className="text-lg shrink-0">{fileIcon(file.contentType)}</span>
-                <div className="flex-1 min-w-0">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/[0.10] text-primary">
+                  <FileTypeIcon contentType={file.contentType} className="size-4.5" />
+                </span>
+                <div className="min-w-0 flex-1">
                   <button
                     onClick={() => file.playable && playFile(file)}
-                    className={`block text-sm font-medium text-neutral-100 truncate text-left ${
-                      file.playable ? "hover:text-primary cursor-pointer" : "cursor-default"
+                    className={`block w-full truncate text-left text-[14px] font-medium text-neutral-100 ${
+                      file.playable ? "cursor-pointer hover:text-primary" : "cursor-default"
                     }`}
                     disabled={!file.playable}
                   >
                     {file.name}
                   </button>
-                  <span className="text-xs text-neutral-500">
+                  <span className="text-[11.5px] text-neutral-500">
                     {formatSize(file.size)} · {file.contentType}
                   </span>
                 </div>
                 {file.playable && (
                   <button
                     onClick={() => playFile(file)}
-                    className="shrink-0 rounded-lg bg-primary/20 px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/30"
-                    aria-label="Lejátszás"
+                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary transition-colors hover:bg-primary/25"
+                    aria-label={`${file.name} lejátszása`}
                   >
-                    ▶
+                    <IconPlay className="size-4" />
                   </button>
                 )}
                 <a
                   href={file.downloadUrl}
                   download
-                  className="shrink-0 rounded-lg bg-neutral-700/40 px-2.5 py-1.5 text-xs font-medium text-neutral-400 transition-colors hover:text-neutral-100 hover:bg-neutral-700/60"
-                  aria-label="Letöltés"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full border border-neutral-border text-neutral-400 transition-colors hover:border-primary/40 hover:text-primary"
+                  aria-label={`${file.name} letöltése`}
                 >
-                  ⬇
+                  <IconDownload className="size-4" />
                 </a>
               </div>
             ))}
@@ -317,7 +322,7 @@ export default function MediaBrowserPage() {
                 className="shrink-0 rounded-lg bg-neutral-700/40 px-2 py-1 text-neutral-400 hover:text-neutral-100 transition-colors"
                 aria-label="Bezárás"
               >
-                ✕
+                <IconClose className="size-4" />
               </button>
             </div>
             {playingFile.contentType.startsWith("audio") ? (
@@ -345,7 +350,7 @@ export default function MediaBrowserPage() {
                 download
                 className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-border px-3 py-1.5 text-neutral-300 hover:text-neutral-100 hover:border-neutral-500 transition-colors"
               >
-                ⬇ Letöltés
+                <IconDownload className="size-3.5" /> Letöltés
               </a>
             </div>
           </div>

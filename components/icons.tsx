@@ -338,3 +338,30 @@ export function IconSchedule(props: IconProps) {
     </IconBase>
   );
 }
+
+/* ---------- /intern/media (Felvételek) icons ---------- */
+
+export function IconFolder(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+    </IconBase>
+  );
+}
+
+export function IconPlay(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M8 5.5v13l11-6.5-11-6.5z" />
+    </IconBase>
+  );
+}
+
+export function IconVideo(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="6" width="12" height="12" rx="2" />
+      <path d="m15 11 6-3.5v9L15 13" />
+    </IconBase>
+  );
+}
