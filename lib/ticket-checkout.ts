@@ -252,7 +252,13 @@ export async function createOrderAndCheckoutSession(
     customer_creation: "always",
     billing_address_collection: "required",
     phone_number_collection: { enabled: true },
-    consent_collection: { terms_of_service: "required" },
+    // No consent_collection here on purpose: Stripe refuses `terms_of_service:
+    // "required"` until a Terms of service URL is set in the Stripe Dashboard's
+    // public business details, which makes every checkout fail with a 400
+    // (verified 2026-11-25: "You cannot collect consent to your terms of
+    // service unless a URL is set in the Stripe Dashboard"). Our own form
+    // already requires the terms checkbox and the server rejects the request
+    // without accept_terms=true, so the consent is collected and enforced here.
     locale: "hu",
     client_reference_id: (order as RkOrder).id,
     metadata: {
