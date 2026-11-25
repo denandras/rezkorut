@@ -109,17 +109,17 @@ let liveStatAfter = null;
 let liveConcerts = null;
 
 // --------------------------------------------------------------------------
-// (a) Live file parse equals the pre-change baseline; both concerts id-less
+// (a) Live file parse equals the pre-change baseline; ids optional (assigned on first write)
 // --------------------------------------------------------------------------
-await section("(a) live file parses to 2 id-less concerts, identical to the pre-change baseline", async () => {
+await section("(a) live file parses to 2 concerts, identical to the pre-change baseline (ids optional)", async () => {
   liveStatBefore = await admin.statUpcomingFile();
   liveConcerts = await admin.listUpcomingConcerts();
   liveStatAfter = await admin.statUpcomingFile();
 
   assert.equal(liveConcerts.length, 2, "the live file must parse to exactly 2 concerts today");
   assert.ok(
-    liveConcerts.every((c) => c.id === undefined),
-    "both live concerts must be id-less today (ids are only assigned on first write)",
+    liveConcerts.every((c) => c.id === undefined || /^rk-[a-z0-9-]+$/.test(c.id)),
+    "live concert ids must be well-formed rk-... ids when present (id-less is also valid; ids are only assigned on first write)",
   );
   assert.deepEqual(
     liveConcerts.map(projectBaselineFields),

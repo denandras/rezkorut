@@ -81,6 +81,24 @@ export function isoToHuDate(iso: string): string {
   return `${year}. ${HU_MONTH_NAMES[month - 1]} ${day}.`;
 }
 
+/**
+ * Normalizes a date that arrived from an API body: accepts either a sortable
+ * ISO date (`2026-11-27`) or the file's Hungarian format (`2026. november 27.`)
+ * and returns the Hungarian form the upcoming file stores. Returns null when
+ * the input is neither.
+ */
+export function normalizeDateInput(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    try {
+      return isoToHuDate(trimmed);
+    } catch {
+      return null;
+    }
+  }
+  return huDateToIso(trimmed) ? trimmed : null;
+}
+
 // ---------------------------------------------------------------------------
 // Id derivation
 // ---------------------------------------------------------------------------
