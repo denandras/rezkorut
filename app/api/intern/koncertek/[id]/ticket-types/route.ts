@@ -21,11 +21,16 @@ export const runtime = "nodejs";
 /**
  * Intern ticket type API: replaces the full type list of a concert.
  *
- * For every type in the payload a Stripe Product + Price is upserted under the
- * deterministic lookup key `rk:<concert_id>:<slug(name)>-<n>` (unit_amount =
- * price_huf * 100 fillér, currency huf, metadata concert_id/ticket_type_id);
- * the price of a type removed from the payload is deactivated in Stripe and
- * the row in rk_ticket_types is set active=false (rows are never deleted).
+ * For every PAID type in the payload a Stripe Product + Price is upserted
+ * under the deterministic lookup key `rk:<concert_id>:<slug(name)>-<n>`
+ * (unit_amount = price_huf * 100 fillér, currency huf, metadata
+ * concert_id/ticket_type_id); the price of a type removed from the payload is
+ * deactivated in Stripe and the row in rk_ticket_types is set active=false
+ * (rows are never deleted).
+ *
+ * Card 11: a type with `price_huf = 0` is an ingyenes jegy — Stripe is never
+ * touched for it (no product, no price; both columns stay null), and a
+ * payload of only free types works without Stripe being configured at all.
  */
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -89,8 +94,14 @@ function validateTypes(raw: unknown): { types: ValidatedType[] } | { error: stri
     }
 
     const priceHuf = body.price_huf;
-    if (typeof priceHuf !== "number" || !Number.isInteger(priceHuf) || priceHuf < 200) {
-      return { error: "A jegy ára legalább 200 forint, egész szám." };
+    // Card 11: 0 Ft = ingyenes jegy (no Stripe price is ever created for it);
+    // a PAID type must be at least 200 Ft (Stripe's minimum charge).
+    if (
+      typeof priceHuf !== "number" ||
+      !Number.isInteger(priceHuf) ||
+      (priceHuf !== 0 && priceHuf < 200)
+    ) {
+      return { error: "A jegy ára 0 forint (ingyenes) vagy legalább 200 forint, egész szám." };
     }
 
     let capacity: number | null = null;
@@ -199,8 +210,11 @@ export async function PUT(req: NextRequest, ctx: RouteContext) {
     }
   }
 
-  // Payload validated; only now do we depend on Stripe being configured.
-  if (!getStripeClient()) {
+  // Payload validated. Card 11: a free-only payload never touches Stripe —
+  // the client is only required when a PAID type is in the list (its price
+  // object must be upserted). Removed PAID types are cleaned up best-effort.
+  const hasPaidType = validated.types.some((type) => type.price_huf > 0);
+  if (hasPaidType && !getStripeClient()) {
     return NextResponse.json(
       { error: "A Stripe nincs beállítva ezen a szerveren." },
       { status: 503 },
@@ -245,22 +259,28 @@ export async function PUT(req: NextRequest, ctx: RouteContext) {
         : existingByLookup.get(lookupKey) ?? undefined;
       const ticketTypeId = match?.id ?? type.id ?? crypto.randomUUID();
 
-      const stripeResult = await upsertTypePrice({
-        concertId,
-        concertTitle: concert.title,
-        typeName: type.name,
-        ticketTypeId,
-        lookupKey,
-        priceHuf: type.price_huf,
-      });
+      // Card 11: a 0 Ft type is an ingyenes jegy — it NEVER touches Stripe:
+      // no product, no price object, `stripe_price_id` and
+      // `stripe_lookup_key` stay null and that is valid for a free type.
+      const isFree = type.price_huf === 0;
+      const stripeResult = isFree
+        ? null
+        : await upsertTypePrice({
+            concertId,
+            concertTitle: concert.title,
+            typeName: type.name,
+            ticketTypeId,
+            lookupKey,
+            priceHuf: type.price_huf,
+          });
 
-      // Renamed type: the old price keeps living under the old lookup key —
-      // deactivate it now that the replacement price exists.
+      // Renamed type, or a type switched from paid to free: the old price
+      // keeps living under the old lookup key — deactivate it now that the
+      // row no longer references it.
       if (
         match &&
         match.stripe_price_id &&
-        match.stripe_lookup_key &&
-        match.stripe_lookup_key !== lookupKey
+        (isFree || (match.stripe_lookup_key && match.stripe_lookup_key !== lookupKey))
       ) {
         await deactivateTypePrice(match.stripe_price_id);
       }
@@ -276,8 +296,8 @@ export async function PUT(req: NextRequest, ctx: RouteContext) {
         sales_end: type.sales_end,
         active: type.active,
         sort: type.sort,
-        stripe_price_id: stripeResult.priceId,
-        stripe_lookup_key: stripeResult.lookupKey,
+        stripe_price_id: stripeResult ? stripeResult.priceId : null,
+        stripe_lookup_key: stripeResult ? stripeResult.lookupKey : null,
       });
     }
 

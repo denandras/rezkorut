@@ -11,9 +11,9 @@ import { formatHuf, type ApiTicketType, type TicketingInfo } from "./types";
  * upserted (rows without an id are new — the server assigns the uuid),
  * rows missing from the payload are deactivated, never deleted.
  *
- * A blocked „Mentés” (empty list, missing name, price under 200 Ft, two early
- * bird rows) is never a disabled button: it stays clickable and explains
- * itself inline on the click.
+ * A blocked „Mentés” (empty list, missing name, a price that is neither 0 nor
+ * at least 200 Ft, two early bird rows) is never a disabled button: it stays
+ * clickable and explains itself inline on the click.
  */
 
 type Row = {
@@ -96,8 +96,8 @@ export default function TicketTypeEditor({
       if (row.name.trim().length < 1) problems.push(`A ${nth} neve hiányzik.`);
       if (row.name.trim().length > 60) problems.push(`A ${nth} neve legfeljebb 60 karakter lehet.`);
       const price = Number(row.price.trim());
-      if (!Number.isInteger(price) || price < 200) {
-        problems.push(`A ${nth} ára legalább 200 forint, egész szám.`);
+      if (!Number.isInteger(price) || (price !== 0 && price < 200)) {
+        problems.push(`A ${nth} ára 0 forint (ingyenes) vagy legalább 200 forint, egész szám.`);
       }
       if (row.capacity.trim() !== "") {
         const capacity = Number(row.capacity.trim());
@@ -208,6 +208,9 @@ export default function TicketTypeEditor({
                       placeholder="4000"
                       className={inputClass}
                     />
+                    <p className="mt-1 text-[10px] text-neutral-500">
+                      0 forint = ingyenes jegy
+                    </p>
                   </div>
                   <div>
                     <label className={cellLabelClass} htmlFor={`type-capacity-${index}`}>

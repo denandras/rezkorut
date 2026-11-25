@@ -194,16 +194,33 @@ export type PublicPaidOrder = {
 export async function getOrderBySessionId(
   sessionId: string,
 ): Promise<PublicPaidOrder | null> {
+  return getOrderForSuccessBy("stripe_session_id", sessionId);
+}
+
+/**
+ * The success page's data for a free (0 Ft) order (card 11): the lookup key
+ * is the order id, but the page may only call this with an id it obtained
+ * from a VERIFIED signed confirmation token (lib/order-token) — never a bare
+ * id out of a URL. Same projection as the session-id path.
+ */
+export async function getOrderByIdForSuccess(orderId: string): Promise<PublicPaidOrder | null> {
+  return getOrderForSuccessBy("id", orderId);
+}
+
+async function getOrderForSuccessBy(
+  column: "stripe_session_id" | "id",
+  value: string,
+): Promise<PublicPaidOrder | null> {
   const db = getTicketDb();
-  if (!db || sessionId.trim().length === 0) return null;
+  if (!db || value.trim().length === 0) return null;
 
   const { data: order, error } = await db
     .from("rk_orders")
     .select("id,status,buyer_name,amount_huf")
-    .eq("stripe_session_id", sessionId.trim())
+    .eq(column, value.trim())
     .maybeSingle();
   if (error) {
-    console.error("[tickets-public] order-by-session read failed:", error.message);
+    console.error(`[tickets-public] order-by-${column === "id" ? "id" : "session"} read failed:`, error.message);
     return null;
   }
   if (!order) return null;

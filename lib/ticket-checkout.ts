@@ -204,13 +204,30 @@ export async function createOrderAndCheckoutSession(
     if (type.sales_end && now > Date.parse(type.sales_end)) {
       throw new CheckoutError(400, "outside_sales_window", "Az elővétel ennél a jegytípusnál már lejárt.", type.name);
     }
-    if (!type.stripe_price_id) {
-      throw new CheckoutError(500, "price_missing", "A jegytípushoz nem tartozik Stripe-ár.", type.name);
-    }
-    if (type.capacity !== null && type.sold + item.quantity > type.capacity) {
-      throw new CheckoutError(409, "sold_out", "Erre a jegytípusra már nincs jegy.", type.name);
-    }
     resolved.push({ type, quantity: item.quantity });
+  }
+
+  // Card 11: a 0 Ft type is an ingyenes jegy — it NEVER goes through Stripe
+  // (its own request path is POST /api/tickets/free). Mixing free and paid
+  // types in one purchase is forbidden, simpler and clearer than splitting
+  // the order; a free-only cart is not a purchase at all.
+  const freeCount = resolved.filter((item) => item.type.price_huf === 0).length;
+  if (freeCount > 0) {
+    if (freeCount < resolved.length) {
+      throw new CheckoutError(409, "free_paid_mixed", "Ingyenes és fizetős jegy nem kérhető egy vásárlásban.");
+    }
+    throw new CheckoutError(400, "free_via_checkout", "Az ingyenes jegy a „Jegy igénylése” gombbal kérhető.");
+  }
+
+  // Paid units only from here: every purchasable type needs its Stripe
+  // price, and the capacity must still cover the request.
+  for (const item of resolved) {
+    if (!item.type.stripe_price_id) {
+      throw new CheckoutError(500, "price_missing", "A jegytípushoz nem tartozik Stripe-ár.", item.type.name);
+    }
+    if (item.type.capacity !== null && item.type.sold + item.quantity > item.type.capacity) {
+      throw new CheckoutError(409, "sold_out", "Erre a jegytípusra már nincs jegy.", item.type.name);
+    }
   }
 
   const amountHuf = resolved.reduce((sum, item) => sum + item.type.price_huf * item.quantity, 0);

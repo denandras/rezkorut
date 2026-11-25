@@ -66,7 +66,11 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       case "refunded":
         return NextResponse.json({
           ok: true,
-          refund_id: result.refundId,
+          // A free order (card 11) refunds DB-only — no Stripe refund exists,
+          // so instead of an empty id the response says what happened.
+          ...(result.refundId
+            ? { refund_id: result.refundId }
+            : { note: "Ingyenes rendelés – a jegyek visszaváltva, pénzmozgás nem történt." }),
           order: result.order,
           tickets_void: result.voided,
         });

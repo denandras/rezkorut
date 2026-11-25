@@ -178,10 +178,12 @@ export default function ConcertDetailScreen({
       blocker: "A koncert dátuma jövőbeli legyen.",
     },
     {
-      ok: activeTypes.every((type) => type.stripe_price_id),
-      met: "A jegytípusok ára átvezetve a fizetési rendszerbe",
+      // Card 11: only PAID types need a Stripe price — a 0 Ft type is an
+      // ingyenes jegy and never touches Stripe, so it must not block.
+      ok: activeTypes.filter((type) => type.price_huf > 0).every((type) => type.stripe_price_id),
+      met: "A fizetős jegytípusok ára átvezetve a fizetési rendszerbe",
       blocker:
-        "A jegytípusok ára még nem került át a fizetési rendszerbe; mentse el újra a jegytípusokat.",
+        "A fizetős jegytípusok ára még nem került át a fizetési rendszerbe; mentse el újra a jegytípusokat.",
     },
   ];
   const publishBlockers = publishChecks

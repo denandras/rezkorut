@@ -355,7 +355,7 @@ export async function getTacitoStatusData(): Promise<TacitoStatusData> {
     client
       .from("rk_tickets")
       .select("id,code,status,tacito_invoice_id,tacito_nav_outcome,tacito_error,created_at,order_id"),
-    client.from("rk_orders").select("id,status"),
+    client.from("rk_orders").select("id,status,amount_huf"),
   ]);
   if (ticketsRes.error) throw fail("getTacitoStatusData (tickets)", ticketsRes.error);
   if (ordersRes.error) throw fail("getTacitoStatusData (orders)", ordersRes.error);
@@ -371,15 +371,20 @@ export async function getTacitoStatusData(): Promise<TacitoStatusData> {
     order_id: string;
   };
   const tickets = (ticketsRes.data ?? []) as TicketRow[];
-  const orders = (ordersRes.data ?? []) as { id: string; status: string }[];
-  const orderStatusById = new Map(orders.map((order) => [order.id, order.status]));
+  const orders = (ordersRes.data ?? []) as { id: string; status: string; amount_huf: number }[];
+  const orderStatusById = new Map(orders.map((order) => [order.id, order]));
 
-  const pending = tickets.filter(
-    (ticket) =>
+  // Card 11: free (0 Ft) orders never get a TACITo invoice — they are `paid`
+  // too, so pending must skip them by amount.
+  const pending = tickets.filter((ticket) => {
+    const order = orderStatusById.get(ticket.order_id);
+    return (
       !ticket.tacito_invoice_id &&
       ticket.status !== "void" &&
-      orderStatusById.get(ticket.order_id) === "paid",
-  );
+      order?.status === "paid" &&
+      order.amount_huf > 0
+    );
+  });
   const errored = tickets
     .filter((ticket) => ticket.tacito_error)
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));

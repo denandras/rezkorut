@@ -101,6 +101,9 @@ async function selectPendingTickets(limit: number): Promise<PendingTicket[]> {
     .neq("status", "void")
     .is("tacito_invoice_id", null)
     .eq("rk_orders.status", "paid")
+    // Card 11: free (0 Ft) orders never get a TACITo invoice — no számla for
+    // an ingyenes jegy. They are `paid` too, so the amount must filter them.
+    .gt("rk_orders.amount_huf", 0)
     .order("created_at")
     .limit(limit);
   if (error) throw new Error(`[tacito-cron] pending tickets read failed: ${error.message}`);
@@ -119,7 +122,9 @@ async function countPendingTickets(): Promise<number> {
     .select("id, order:rk_orders!inner(id)", { count: "exact", head: true })
     .neq("status", "void")
     .is("tacito_invoice_id", null)
-    .eq("rk_orders.status", "paid");
+    .eq("rk_orders.status", "paid")
+    // Card 11: free (0 Ft) orders never queue for invoicing.
+    .gt("rk_orders.amount_huf", 0);
   if (error) throw new Error(`[tacito-cron] pending tickets count failed: ${error.message}`);
   return count ?? 0;
 }

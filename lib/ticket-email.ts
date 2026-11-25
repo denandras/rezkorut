@@ -158,10 +158,20 @@ function concertFacts(data: TicketEmailData): { title: string; when: string; whe
   return { title, when, where };
 }
 
+/**
+ * True when every ticket of the order is 0 Ft — an ingyenes jegy request
+ * (card 11): the wording must not speak of payment or an incoming számla
+ * (a free ticket never gets a TACITo invoice).
+ */
+export function isFreeTicketOrder(tickets: TicketEmailTicket[]): boolean {
+  return tickets.length > 0 && tickets.every((ticket) => ticket.price_huf === 0);
+}
+
 export function buildTicketEmailText(data: TicketEmailData): string {
   const facts = concertFacts(data);
+  const free = isFreeTicketOrder(data.tickets);
   const lines: string[] = [];
-  lines.push("Köszönjük a vásárlást!");
+  lines.push(free ? "Köszönjük az igénylést!" : "Köszönjük a vásárlást!");
   lines.push("");
   lines.push(facts.title);
   if (facts.when) lines.push(facts.when);
@@ -174,9 +184,17 @@ export function buildTicketEmailText(data: TicketEmailData): string {
     lines.push(`  ${ticketUrl(ticket.code)}`);
   }
   lines.push("");
-  lines.push(`Fizetett összeg: ${money(data.tickets.reduce((sum, ticket) => sum + ticket.price_huf, 0))}`);
+  lines.push(
+    free
+      ? "Összeg: ingyenes"
+      : `Fizetett összeg: ${money(data.tickets.reduce((sum, ticket) => sum + ticket.price_huf, 0))}`,
+  );
   lines.push("");
-  lines.push("Ez a levél nem számla: a számlát a számlázási rendszerünktől külön e-mailben kapja.");
+  lines.push(
+    free
+      ? "Ez a jegy ingyenes, számla nem készül róla."
+      : "Ez a levél nem számla: a számlát a számlázási rendszerünktől külön e-mailben kapja.",
+  );
   lines.push("A koncertre a jegykód mutatásával, nyomtatva vagy a telefonjáról is beléphet.");
   lines.push("");
   lines.push("Réz körút");
@@ -224,6 +242,7 @@ const MEDIA_QUERIES = `
 
 export function buildTicketEmailHtml(data: TicketEmailData): string {
   const facts = concertFacts(data);
+  const free = isFreeTicketOrder(data.tickets);
   const total = data.tickets.reduce((sum, ticket) => sum + ticket.price_huf, 0);
 
   const factRow = (label: string, value: string): string => `
@@ -301,7 +320,7 @@ export function buildTicketEmailHtml(data: TicketEmailData): string {
             </tr>
             <tr>
               <td class="em-p" style="padding:20px 32px 0 32px;font-family:${SANS};">
-                <h1 style="margin:0;font-size:22px;line-height:1.3;font-weight:700;color:${CREAM};">Köszönjük a vásárlást!</h1>
+                <h1 style="margin:0;font-size:22px;line-height:1.3;font-weight:700;color:${CREAM};">${free ? "Köszönjük az igénylést!" : "Köszönjük a vásárlást!"}</h1>
                 <div style="font-size:17px;line-height:1.4;font-weight:600;color:${CREAM};padding-top:6px;">${esc(facts.title)}</div>
               </td>
             </tr>
@@ -323,13 +342,13 @@ export function buildTicketEmailHtml(data: TicketEmailData): string {
             ${ticketBlocks}
             <tr>
               <td class="em-p" align="right" style="padding:8px 32px 24px 32px;font-family:${SANS};">
-                <span style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:${MUTED};">Fizetett összeg</span>
-                <span style="font-size:16px;font-weight:700;color:${CREAM};padding-left:10px;white-space:nowrap;">${esc(money(total))}</span>
+                <span style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:${MUTED};">${free ? "Összeg" : "Fizetett összeg"}</span>
+                <span style="font-size:16px;font-weight:700;color:${CREAM};padding-left:10px;white-space:nowrap;">${free ? "Ingyenes" : esc(money(total))}</span>
               </td>
             </tr>
             <tr>
               <td class="em-p" style="padding:18px 32px 30px 32px;font-family:${SANS};border-top:1px solid ${BORDER};">
-                <p style="margin:0;font-size:12px;line-height:1.7;color:${MUTED};">Ez a levél nem számla: a számlát a számlázási rendszerünktől külön e-mailben kapja.</p>
+                <p style="margin:0;font-size:12px;line-height:1.7;color:${MUTED};">${free ? "Ez a jegy ingyenes, számla nem készül róla." : "Ez a levél nem számla: a számlát a számlázási rendszerünktől külön e-mailben kapja."}</p>
                 <p style="margin:10px 0 0 0;font-size:12px;line-height:1.7;color:${MUTED};">
                   <a href="https://rezkorut.hu" style="color:${MUTED};text-decoration:none;">rezkorut.hu</a>
                   <span>&nbsp;&middot;&nbsp;</span>

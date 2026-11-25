@@ -15,17 +15,34 @@ import { sendTicketEmail, type TicketEmailResult } from "@/lib/ticket-email";
 
 /**
  * Shared fulfilment + refund logic (card 03). This module is the ONLY place
- * that creates `rk_tickets` rows: the Stripe webhook uses it, and any future
- * caller (a manual "re-fetch session" retry path, a resend route) shares it.
+ * that creates `rk_tickets` rows: the Stripe webhook uses it, the free
+ * (0 Ft) endpoint uses it (card 11), and any future caller (a manual
+ * "re-fetch session" retry path, a resend route) shares it.
  *
  * `fulfilOrder` is idempotent: a paid order that already has tickets is left
  * untouched (webhook replays are a normal Stripe occurrence). The e-mail is
  * sent after the DB writes and its failure never fails the caller —
  * `emailed_at` simply stays null (the resend retry route is a later card).
  *
+ * The per-order DB writes (mark paid → create tickets → increment `sold` →
+ * flip the concert to `sold_out` → send the e-mail) live in one shared
+ * `writeFulfilment` core, so a paid Stripe session and a free order walk the
+ * exact same fulfilment path — the card 11 rule that a free ticket gets
+ * everything a paid one gets.
+ *
  * Node type-stripping compatibility: no parameter properties, no enums
  * (the verification harness imports this file directly).
  */
+
+/**
+ * Marker for free (0 Ft) orders (card 11): `stripe_payment_intent` carries the
+ * literal `FREE` so a free order is recognisable without new columns. Free
+ * orders never touch Stripe — no session, no payment intent, no refund — and
+ * every code path that would call Stripe on an order must skip or DB-handle
+ * orders carrying this marker.
+ */
+export const FREE_ORDER_MARKER = "FREE";
+
 
 function db() {
   const client = getTicketDb();
@@ -69,7 +86,7 @@ export type FulfilResult =
   | { outcome: "already_fulfilled"; orderId: string; ticketCount: number }
   | { outcome: "skipped"; orderId: string | null; reason: string };
 
-type ResolvedUnit = { type: RkTicketType; quantity: number };
+export type ResolvedUnit = { type: RkTicketType; quantity: number };
 
 function priceIdOfLineItem(lineItem: Stripe.LineItem): string | null {
   if (typeof lineItem.price === "string") return lineItem.price;
@@ -143,47 +160,19 @@ function buyerPatchFromSession(order: RkOrder, session: Stripe.Checkout.Session)
 }
 
 /**
- * Fulfils a paid Checkout Session: marks the order paid, creates one ticket
- * row per paid unit, increments `sold` per type, flips the concert to
- * `sold_out` when every active type is at capacity, then sends the ticket
- * e-mail and stamps `emailed_at`.
+ * The shared fulfilment core: applies the order patch (marking the order
+ * `paid`), creates one ticket row per unit, increments `sold` per type,
+ * flips the concert to `sold_out` when every active type is at capacity,
+ * then sends the ticket e-mail and stamps `emailed_at`. Callers resolve the
+ * units themselves — the Stripe path maps them off the session's line items,
+ * the free path (card 11) already knows them from its validation.
  */
-export async function fulfilOrder(session: Stripe.Checkout.Session): Promise<FulfilResult> {
-  const orderId = session.metadata?.order_id ?? session.client_reference_id ?? null;
-  if (!orderId) {
-    return { outcome: "skipped", orderId: null, reason: "the session carries no order reference" };
-  }
-
-  const order = await getOrderById(orderId);
-  if (!order) {
-    return { outcome: "skipped", orderId, reason: "no rk_orders row for the session" };
-  }
-
-  const existingTickets = await listTicketsForOrder(orderId);
-  if (order.status === "paid" && existingTickets.length > 0) {
-    return { outcome: "already_fulfilled", orderId, ticketCount: existingTickets.length };
-  }
-  if (order.status === "refunded") {
-    return { outcome: "skipped", orderId, reason: "the order is already refunded — nothing to fulfil" };
-  }
-
-  const types = await getTicketTypes(order.concert_id);
-  const units = resolveUnits(session, types);
-
-  const paymentIntent =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : session.payment_intent?.id ?? null;
-
-  const buyerPatch = buyerPatchFromSession(order, session);
-  const orderPatch: Record<string, unknown> = {
-    status: "paid",
-    paid_at: nowIso(),
-    ...buyerPatch,
-  };
-  if (paymentIntent && !order.stripe_payment_intent) {
-    orderPatch.stripe_payment_intent = paymentIntent;
-  }
+async function writeFulfilment(
+  order: RkOrder,
+  units: ResolvedUnit[],
+  orderPatch: Record<string, unknown>,
+): Promise<Extract<FulfilResult, { outcome: "fulfilled" }>> {
+  const orderId = order.id;
   const { error: orderError } = await db().from("rk_orders").update(orderPatch).eq("id", orderId);
   if (orderError) throw new Error(`[ticket-fulfil] rk_orders update failed: ${orderError.message}`);
 
@@ -269,6 +258,79 @@ export async function fulfilOrder(session: Stripe.Checkout.Session): Promise<Ful
 }
 
 /**
+ * Fulfils a paid Checkout Session: marks the order paid, creates one ticket
+ * row per paid unit, increments `sold` per type, flips the concert to
+ * `sold_out` when every active type is at capacity, then sends the ticket
+ * e-mail and stamps `emailed_at`.
+ */
+export async function fulfilOrder(session: Stripe.Checkout.Session): Promise<FulfilResult> {
+  const orderId = session.metadata?.order_id ?? session.client_reference_id ?? null;
+  if (!orderId) {
+    return { outcome: "skipped", orderId: null, reason: "the session carries no order reference" };
+  }
+
+  const order = await getOrderById(orderId);
+  if (!order) {
+    return { outcome: "skipped", orderId, reason: "no rk_orders row for the session" };
+  }
+
+  const existingTickets = await listTicketsForOrder(orderId);
+  if (order.status === "paid" && existingTickets.length > 0) {
+    return { outcome: "already_fulfilled", orderId, ticketCount: existingTickets.length };
+  }
+  if (order.status === "refunded") {
+    return { outcome: "skipped", orderId, reason: "the order is already refunded — nothing to fulfil" };
+  }
+
+  const types = await getTicketTypes(order.concert_id);
+  const units = resolveUnits(session, types);
+
+  const paymentIntent =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id ?? null;
+
+  const buyerPatch = buyerPatchFromSession(order, session);
+  const orderPatch: Record<string, unknown> = {
+    status: "paid",
+    paid_at: nowIso(),
+    ...buyerPatch,
+  };
+  if (paymentIntent && !order.stripe_payment_intent) {
+    orderPatch.stripe_payment_intent = paymentIntent;
+  }
+  return writeFulfilment(order, units, orderPatch);
+}
+
+/**
+ * Fulfils a free (0 Ft) order (card 11): same shared core as a paid session —
+ * mark paid, create one ticket per requested unit, increment `sold`, flip the
+ * concert to `sold_out` at capacity, send the ticket e-mail. The order row is
+ * inserted by `POST /api/tickets/free` as `pending` with the `FREE` marker;
+ * this flips it to `paid` exactly like the webhook flips a paid order, and is
+ * idempotent the same way.
+ */
+export async function fulfilFreeOrder(orderId: string, units: ResolvedUnit[]): Promise<FulfilResult> {
+  const order = await getOrderById(orderId);
+  if (!order) {
+    return { outcome: "skipped", orderId, reason: "no rk_orders row for the free request" };
+  }
+
+  const existingTickets = await listTicketsForOrder(orderId);
+  if (order.status === "paid" && existingTickets.length > 0) {
+    return { outcome: "already_fulfilled", orderId, ticketCount: existingTickets.length };
+  }
+  if (order.status === "refunded") {
+    return { outcome: "skipped", orderId, reason: "the order is already refunded — nothing to fulfil" };
+  }
+  if (units.length === 0) {
+    return { outcome: "skipped", orderId, reason: "the free request carries no units" };
+  }
+
+  return writeFulfilment(order, units, { status: "paid", paid_at: nowIso() });
+}
+
+/**
  * Manual "re-fetch session" path: retrieves the session with its line items
  * expanded (webhook payloads never include line_items) and fulfils it.
  * Idempotent through `fulfilOrder`.
@@ -351,6 +413,15 @@ export async function refundPaidOrder(
   }
   if (order.status !== "paid") {
     return { outcome: "not_paid", status: order.status };
+  }
+  if (order.stripe_payment_intent === FREE_ORDER_MARKER) {
+    // Free order (card 11): no money ever moved, so there is nothing to
+    // refund at Stripe — the refund is DB-only: mark refunded + void the
+    // tickets, exactly what a cancelled concert should do to complimentary
+    // tickets too.
+    const mark = await markOrderRefunded({ orderId });
+    if (!mark) return { outcome: "unknown_order" };
+    return { outcome: "refunded", refundId: "", order: mark.order, voided: mark.voided };
   }
   if (!order.stripe_payment_intent) {
     return { outcome: "no_payment_intent" };

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import BottomNav from "@/components/bottom-nav";
 import SuccessRefresher from "@/components/tickets/SuccessRefresher";
-import { getOrderBySessionId } from "@/lib/tickets-public";
+import { verifyOrderToken } from "@/lib/order-token";
+import { getOrderByIdForSuccess, getOrderBySessionId } from "@/lib/tickets-public";
 
 export const dynamic = "force-dynamic";
 
@@ -25,13 +26,23 @@ export default async function KoszonjukPage({ searchParams }: PageProps) {
     typeof query.session_id === "string" && query.session_id.trim().length > 0
       ? query.session_id.trim()
       : null;
+  // Free (0 Ft) orders (card 11) have no Stripe session — the free endpoint
+  // returns a SIGNED confirmation token naming the order, and only a token
+  // that verifies here unlocks the id-based lookup. A bare order id out of
+  // a URL is never accepted (same rule as the paid flow's session id).
+  const orderToken =
+    typeof query.order === "string" && query.order.trim().length > 0
+      ? query.order.trim()
+      : null;
 
-  // Lookup by the buyer's own Stripe session id only — never by order id or
-  // buyer e-mail. The page shows the buyer's own name and the ticket codes,
-  // nothing else.
-  const result = sessionId ? await getOrderBySessionId(sessionId) : null;
+  const result = sessionId
+    ? await getOrderBySessionId(sessionId)
+    : orderToken
+      ? await getOrderByIdForSuccess(verifyOrderToken(orderToken) ?? "")
+      : null;
 
   const fulfilled = result !== null && result.tickets.length > 0;
+  const free = result !== null && result.order.amount_huf === 0;
 
   return (
     <div className="flex min-h-screen flex-col bg-background-dark text-neutral-100">
@@ -51,15 +62,15 @@ export default async function KoszonjukPage({ searchParams }: PageProps) {
                 Köszönjük!
               </h2>
               <p className="mt-4 text-sm text-neutral-300">
-                {sessionId
-                  ? "Nem találtuk a fizetést ezzel az azonosítóval. Ha a vásárlást elvégezte, a jegyek a megerősítő e-mailben vannak."
-                  : "A fizetési azonosító hiányzik. Ha a vásárlást elvégezte, a jegyek a megerősítő e-mailben vannak."}
+                {sessionId || orderToken
+                  ? "Nem találtuk a rendelést ezzel az azonosítóval. Ha a vásárlást vagy a jegyigénylést elvégezte, a jegyek a megerősítő e-mailben vannak."
+                  : "A visszaigazoló azonosító hiányzik. Ha a vásárlást vagy a jegyigénylést elvégezte, a jegyek a megerősítő e-mailben vannak."}
               </p>
             </section>
           ) : fulfilled ? (
             <section>
               <h2 className="font-display text-3xl leading-[0.9] font-bold tracking-tight text-white uppercase">
-                Köszönjük a vásárlást!
+                {free ? "Köszönjük az igénylést!" : "Köszönjük a vásárlást!"}
               </h2>
               {result.order.buyer_name && (
                 <p className="mt-4 text-sm text-neutral-300">
@@ -68,7 +79,8 @@ export default async function KoszonjukPage({ searchParams }: PageProps) {
               )}
               <p className="mt-2 text-sm text-neutral-300">
                 A jegyei elkészültek. A jegyek és a visszaigazolás a megadott
-                e-mail-címre is elérkeztek; a számla külön e-mailben következik.
+                e-mail-címre is elérkeztek
+                {free ? ". Ingyenes jegyről számla nem készül." : "; a számla külön e-mailben következik."}
               </p>
               <ul className="mt-6 space-y-3">
                 {result.tickets.map((ticket) => (
@@ -81,7 +93,9 @@ export default async function KoszonjukPage({ searchParams }: PageProps) {
                         {ticket.type ?? "Jegy"}
                       </p>
                       <p className="mt-1 text-sm text-neutral-400">
-                        {formatHuf(ticket.price_huf)} Ft
+                        {ticket.price_huf === 0
+                          ? "Ingyenes"
+                          : `${formatHuf(ticket.price_huf)} Ft`}
                       </p>
                     </div>
                     <span className="shrink-0 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold tracking-widest text-primary">
@@ -91,7 +105,10 @@ export default async function KoszonjukPage({ searchParams }: PageProps) {
                 ))}
               </ul>
               <p className="mt-6 text-xs text-neutral-500">
-                Fizetendő összeg: {formatHuf(result.order.amount_huf)} Ft. A
+                {free
+                  ? "Ingyenes igénylés – fizetendő összeg 0 forint. A"
+                  : `Fizetendő összeg: ${formatHuf(result.order.amount_huf)} Ft. A`}
+                {" "}
                 jegyek a koncertre belépéskor a kód alapján azonosítódnak.
               </p>
             </section>

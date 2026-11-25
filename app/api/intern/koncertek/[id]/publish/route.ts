@@ -12,8 +12,11 @@ export const runtime = "nodejs";
 
 /**
  * Publishes a concert: status → `on_sale`. Requires at least one active ticket
- * type, a not-yet-past event date, and at least one active type with a Stripe
- * price id.
+ * type and a not-yet-past event date. Card 11: a 0 Ft type is an ingyenes
+ * jegy — it never blocks publishing (a concert with only free types may go
+ * on sale), and it never needs a Stripe price. The paid rules apply only
+ * when there is a paid type at all: at least one paid type ≥ 200 Ft, and
+ * every active paid type must carry its Stripe price id.
  */
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -58,11 +61,22 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       );
     }
 
-    if (!activeTypes.some((type) => type.stripe_price_id)) {
-      return NextResponse.json(
-        { error: "Nincs Stripe ár rendelve az aktív jegytípusokhoz." },
-        { status: 400 },
-      );
+    // Card 11: paid rules apply only if there is a paid type at all — a
+    // free-only concert may go on sale, a free type never blocks.
+    const activePaid = activeTypes.filter((type) => type.price_huf > 0);
+    if (activePaid.length > 0) {
+      if (!activePaid.some((type) => type.price_huf >= 200)) {
+        return NextResponse.json(
+          { error: "A fizetős jegy ára legalább 200 forint." },
+          { status: 400 },
+        );
+      }
+      if (!activePaid.every((type) => type.stripe_price_id)) {
+        return NextResponse.json(
+          { error: "Nincs Stripe ár rendelve az aktív fizetős jegytípusokhoz." },
+          { status: 400 },
+        );
+      }
     }
 
     const updated = await setConcertStatus(id, "on_sale");
