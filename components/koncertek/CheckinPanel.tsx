@@ -22,6 +22,7 @@ type ReadState =
   | { kind: "used"; time: string | null; code: string }
   | { kind: "void"; code: string }
   | { kind: "wrong_concert"; code: string }
+  | { kind: "closed"; message: string }
   | { kind: "unknown"; code: string };
 
 type CameraState = "off" | "starting" | "on" | "denied";
@@ -37,6 +38,7 @@ const RESULT_CLASS: Record<ReadState["kind"], string> = {
   used: "border-[#e6be5f]/50 bg-[#e6be5f]/10 text-[#e6be5f]",
   void: "border-[#ed9a91]/40 bg-[#ed9a91]/10 text-[#ed9a91]",
   wrong_concert: "border-[#ed9a91]/40 bg-[#ed9a91]/10 text-[#ed9a91]",
+  closed: "border-[#e6be5f]/50 bg-[#e6be5f]/10 text-[#e6be5f]",
   unknown: "border-[#ed9a91]/40 bg-[#ed9a91]/10 text-[#ed9a91]",
 };
 
@@ -117,6 +119,14 @@ export default function CheckinPanel({
             break;
           case "void":
             setRead({ kind: "void", code: data.ticket?.code ?? normalized });
+            break;
+          case "closed":
+            setRead({
+              kind: "closed",
+              message:
+                (data as { message?: string }).message ??
+                "A beléptetés még nem nyílt meg.",
+            });
             break;
           case "wrong_concert":
             setRead({ kind: "wrong_concert", code: data.ticket?.code ?? normalized });
@@ -338,6 +348,9 @@ export default function CheckinPanel({
             <p className="text-lg font-bold">
               Másik koncertre szól{read.code ? ` – ${read.code}` : ""}
             </p>
+          )}
+          {read.kind === "closed" && (
+            <p className="text-lg font-bold">{read.message}</p>
           )}
           {read.kind === "unknown" && (
             <p className="text-lg font-bold">Ismeretlen kód</p>

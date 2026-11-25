@@ -18,15 +18,9 @@ export const dynamic = "force-dynamic";
 /**
  * /intern — the intern hub. Same gate as every intern page (the intern
  * password + cookie), but the link list is server-rendered so the cards are
- * in the response HTML; the „Koncertek” ticketing dashboard sits first.
+ * in the response HTML; the „Koncertek” ticketing dashboard sits last.
  */
 const links = [
-  {
-    title: "Koncertek",
-    description: "Jegyek, eladások, beléptetés",
-    href: "/intern/koncertek",
-    icon: IconTicket,
-  },
   {
     title: "Kanban",
     description: "Feladatkezelő – kották, próbák, koncertek",
@@ -68,6 +62,12 @@ const links = [
     description: "Notion – együttes wiki",
     href: "https://rezkorut.notion.site/R-z-k-r-t-a6fb4a7d4bd8830b865081c4c1eb686a",
     icon: IconInfo,
+  },
+  {
+    title: "Koncertek",
+    description: "Jegyek, eladások, beléptetés",
+    href: "/intern/koncertek",
+    icon: IconTicket,
   },
 ];
 

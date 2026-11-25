@@ -89,6 +89,33 @@ export async function POST(req: NextRequest) {
     }
   }
 
+/** Europe/Budapest offset (minutes) for a given instant, DST-safe. */
+function budapestOffsetMinutes(date: Date): number {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Budapest",
+    timeZoneName: "longOffset",
+  });
+  const part = fmt.formatToParts(date).find((p) => p.type === "timeZoneName")?.value ?? "GMT+01:00";
+  const m = part.match(/GMT([+-])(\d{2}):(\d{2})/);
+  if (!m) return 60;
+  const sign = m[1] === "-" ? -1 : 1;
+  return sign * (Number(m[2]) * 60 + Number(m[3]));
+}
+
+/** Concert start as a UTC instant from the stored HU date + time. */
+function concertStart(eventDate: string, eventTime: string | null): Date | null {
+  if (!eventDate) return null;
+  const time = (eventTime ?? "19:00").trim() || "19:00";
+  const naive = new Date(`${eventDate}T${time}:00Z`);
+  if (Number.isNaN(naive.getTime())) return null;
+  const offset = budapestOffsetMinutes(naive);
+  return new Date(naive.getTime() - offset * 60_000);
+}
+
+/** Entry opens this many minutes before the start and closes that many after. */
+const CHECKIN_OPENS_BEFORE_MIN = 4 * 60;
+const CHECKIN_CLOSES_AFTER_MIN = 6 * 60;
+
   try {
     const { data: found, error: findError } = await client
       .from("rk_tickets")
@@ -105,6 +132,34 @@ export async function POST(req: NextRequest) {
         ticket: ticket ? { code: ticket.code } : null,
         counts: await doorCounts(client, concertId),
       });
+    }
+
+    // Entry window: 4 h before the concert starts, closed 6 h after the start.
+    // Before/after that a scan is refused with the reason, so nobody is marked
+    // as entered weeks early by an accidental click.
+    const { data: concertRow, error: concertError } = await client
+      .from("rk_concerts")
+      .select("event_date,event_time,status")
+      .eq("concert_id", concertId)
+      .maybeSingle();
+    if (concertError) throw new Error(`[checkin] rk_concerts lookup failed: ${concertError.message}`);
+    const start = concertRow?.event_date
+      ? concertStart(String(concertRow.event_date), (concertRow.event_time as string | null) ?? null)
+      : null;
+    if (start) {
+      const now = Date.now();
+      const opensAt = start.getTime() - CHECKIN_OPENS_BEFORE_MIN * 60_000;
+      const closesAt = start.getTime() + CHECKIN_CLOSES_AFTER_MIN * 60_000;
+      if (now < opensAt || now > closesAt) {
+        return NextResponse.json({
+          result: "closed",
+          message: "A beléptetés a koncert előtt 4 órával nyílik meg.",
+          opens_at: new Date(opensAt).toISOString(),
+          closes_at: new Date(closesAt).toISOString(),
+          ticket: null,
+          counts: await doorCounts(client, concertId),
+        });
+      }
     }
 
     if (ticket.status === "void") {

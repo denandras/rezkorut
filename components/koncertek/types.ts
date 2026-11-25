@@ -74,6 +74,27 @@ export type ApiTicket = {
   tacito_error: string | null;
 };
 
+/**
+ * A kedvezménykód row as the intern API answers it (card 12): the rk_discount_codes
+ * row plus the concert's title when the code is scoped to a concert.
+ */
+export type ApiDiscountCode = {
+  id: string;
+  concert_id: string | null;
+  /** The concert's title (the panel's display); null on the API only when the row is orphaned. */
+  concert_title: string | null;
+  code: string;
+  stripe_coupon_id: string;
+  stripe_promotion_code_id: string;
+  percent_off: number | null;
+  amount_off_huf: number | null;
+  max_redemptions: number | null;
+  times_redeemed: number;
+  expires_at: string | null;
+  active: boolean;
+  created_at: string;
+};
+
 export type TacitoStatus =
   | {
       ok: true;
@@ -109,7 +130,7 @@ export type TacitoStatus =
   | { ok: false; checked_at: string; error: string };
 
 export type CheckinResponse = {
-  result: "valid" | "used" | "void" | "wrong_concert" | "unknown";
+  result: "valid" | "used" | "void" | "wrong_concert" | "unknown" | "closed";
   ticket?: {
     code: string;
     ticket_type_name: string | null;

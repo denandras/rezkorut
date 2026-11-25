@@ -39,6 +39,13 @@ import QRCode from "qrcode";
 
 const TICKET_URL_BASE = "https://rezkorut.hu/j/";
 
+/**
+ * One support address for every outgoing ticket e-mail: Reply-To, footer and the
+ * "ha nem érkezett meg" sentence must never disagree (owner, 2026-11-25:
+ * "make sure email texts are in line with each other").
+ */
+const SUPPORT_EMAIL = (process.env.MAIL_REPLY_TO || "mail@rezkorut.hu").trim();
+
 /** Public per-ticket landing page (`/j/<code>`). */
 export function ticketUrl(code: string): string {
   return `${TICKET_URL_BASE}${code}`;
@@ -137,6 +144,11 @@ function money(huf: number): string {
   return `${grouped} Ft`;
 }
 
+/** Google Maps search URL for a venue string (no API key needed). */
+export function mapsUrl(query: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
 function huDate(isoDate: string): string {
   const date = new Date(`${isoDate}T12:00:00Z`);
   return new Intl.DateTimeFormat("hu-HU", {
@@ -181,7 +193,6 @@ export function buildTicketEmailText(data: TicketEmailData): string {
   for (const ticket of data.tickets) {
     const type = ticket.ticket_type_name ? `${ticket.ticket_type_name} — ` : "";
     lines.push(`- ${type}${ticket.code} (${money(ticket.price_huf)})`);
-    lines.push(`  ${ticketUrl(ticket.code)}`);
   }
   lines.push("");
   lines.push(
@@ -199,7 +210,7 @@ export function buildTicketEmailText(data: TicketEmailData): string {
   lines.push("");
   lines.push("Réz körút");
   lines.push("https://rezkorut.hu");
-  lines.push("contact@andrasdenes.com");
+  lines.push(SUPPORT_EMAIL);
   return lines.join("\n");
 }
 
@@ -245,15 +256,19 @@ export function buildTicketEmailHtml(data: TicketEmailData): string {
   const free = isFreeTicketOrder(data.tickets);
   const total = data.tickets.reduce((sum, ticket) => sum + ticket.price_huf, 0);
 
-  const factRow = (label: string, value: string): string => `
+  const factRow = (label: string, value: string, href?: string): string => `
         <tr>
           <td class="em-fl" width="110" style="width:110px;vertical-align:top;padding:4px 12px 4px 0;font-family:${SANS};font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:${MUTED};">${esc(label)}</td>
-          <td class="em-fv" style="vertical-align:top;padding:4px 0;font-family:${SANS};font-size:14px;line-height:1.5;color:${CREAM};">${esc(value)}</td>
+          <td class="em-fv" style="vertical-align:top;padding:4px 0;font-family:${SANS};font-size:14px;line-height:1.5;color:${CREAM};">${
+            href
+              ? `<a href="${esc(href)}" target="_blank" rel="noreferrer" style="color:${CREAM};text-decoration:none;border-bottom:1px solid ${GOLD};">${esc(value)}</a>`
+              : esc(value)
+          }</td>
         </tr>`;
 
   const factRows = [
     facts.when ? factRow("Dátum", facts.when) : "",
-    facts.where ? factRow("Helyszín", facts.where) : "",
+    facts.where ? factRow("Helyszín", facts.where, mapsUrl(facts.where)) : "",
   ]
     .filter(Boolean)
     .join("");
@@ -282,8 +297,8 @@ export function buildTicketEmailHtml(data: TicketEmailData): string {
                 <td class="em-tk" dir="ltr" style="vertical-align:middle;padding:0 16px 0 0;">
                   <div style="font-family:${SANS};font-size:14px;line-height:1.5;">${typeLine}</div>
                   <div style="font-family:${MONO};font-size:17px;font-weight:700;letter-spacing:0.12em;color:${CREAM};padding-top:4px;">${esc(ticket.code)}</div>
-                  <div style="font-family:${SANS};font-size:12px;line-height:1.6;padding-top:8px;">
-                    <a href="${esc(ticketUrl(ticket.code))}" style="color:${MUTED};text-decoration:none;border-bottom:1px solid ${BORDER};">${esc(ticketUrl(ticket.code))}</a>
+                  <div style="font-family:${SANS};font-size:12px;line-height:1.6;padding-top:8px;color:${MUTED};">
+                    A belépéshez a QR-kódot vagy a fenti kódot mutassa.
                   </div>
                 </td>
               </tr>
@@ -352,7 +367,7 @@ export function buildTicketEmailHtml(data: TicketEmailData): string {
                 <p style="margin:10px 0 0 0;font-size:12px;line-height:1.7;color:${MUTED};">
                   <a href="https://rezkorut.hu" style="color:${MUTED};text-decoration:none;">rezkorut.hu</a>
                   <span>&nbsp;&middot;&nbsp;</span>
-                  <a href="mailto:contact@andrasdenes.com" style="color:${MUTED};text-decoration:none;">contact@andrasdenes.com</a>
+                  <a href="mailto:${SUPPORT_EMAIL}" style="color:${MUTED};text-decoration:none;">${SUPPORT_EMAIL}</a>
                 </p>
               </td>
             </tr>
@@ -392,7 +407,7 @@ export async function sendTicketEmail(data: TicketEmailData): Promise<TicketEmai
       from: cfg.from,
       to: data.buyerEmail,
       cc: cfg.cc,
-      replyTo: cfg.cc,
+      replyTo: SUPPORT_EMAIL,
       subject: `Jegyek — ${concertFacts(data).title}`,
       text: buildTicketEmailText(data),
       html: buildTicketEmailHtml(data),
