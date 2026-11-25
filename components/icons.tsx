@@ -339,6 +339,21 @@ export function IconSchedule(props: IconProps) {
   );
 }
 
+/* ---------- /intern/koncertek (Koncertek dashboard) icons ---------- */
+
+/** Ticketing dashboard: a ticket stub with a perforated divider. */
+export function IconTicket(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <path d="M14 6v1.5" />
+      <path d="M14 9v1.5" />
+      <path d="M14 12v1.5" />
+      <path d="M14 15v1.5" />
+    </IconBase>
+  );
+}
+
 /* ---------- /intern/media (Felvételek) icons ---------- */
 
 export function IconFolder(props: IconProps) {

@@ -168,7 +168,9 @@ export async function POST(req: NextRequest) {
     if (!validated) {
       return NextResponse.json({ error: "Hibás műsorlista." }, { status: 400 });
     }
-    program = validated;
+    // An empty list is "no program": the file format has no empty-program
+    // state (serializeConcert drops it), so store undefined, not [].
+    program = validated.length > 0 ? validated : undefined;
   }
 
   const href =
