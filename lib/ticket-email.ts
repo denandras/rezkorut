@@ -3,9 +3,14 @@ import type SMTPTransport from "nodemailer/lib/smtp-transport";
 import QRCode from "qrcode";
 
 /**
- * Ticket e-mail for a paid order (card 03): Hungarian, no emoji, plain
- * table-based HTML that renders in Gmail, one block per ticket with its code
- * and an inline QR PNG pointing at https://rezkorut.hu/j/<code>.
+ * Ticket e-mail for a paid order (card 03, rebuilt to the Réz körút brand in
+ * card 09): Hungarian, no emoji, table-based dark design carrying the site
+ * palette from app/globals.css — charcoal `#06100a` page, `#0e2016` card with
+ * a 1 px `#1a3828` border, gold `#e6d5a3` accents, cream `#f5f0e4` text and
+ * muted `#9aa79e` labels. The wordmark is letter-spaced gold TEXT, never an
+ * image; the font stack is 'Lexend Deca' with system fallbacks (Gmail strips
+ * webfont loading, so the stack is the design); only the ticket code uses
+ * 'Courier New'.
  *
  * Transport: Purelymail SMTP through the contact@andrasdenes.com mailbox —
  * the same pattern as ~/projects/yellowsky/lib/email.ts. Env: SMTP_HOST,
@@ -14,14 +19,22 @@ import QRCode from "qrcode";
  * missing mailer must never break a paid order (the webhook stays 200 and
  * `emailed_at` stays null for a later retry).
  *
- * The QR PNG is generated with qrcode.toDataURL, then attached through a
- * `cid:` reference: Gmail strips data: URIs from HTML bodies, so an inline
- * attachment is the mechanism that actually renders there. The code text and
- * the /j/<code> link are always present too, so the ticket is usable even
- * with images blocked.
+ * The QR PNG is generated with qrcode.toBuffer (errorCorrectionLevel H,
+ * margin 2, width 640, dark #0b1a10 on light #f5f0e4 — no logo is ever drawn
+ * inside the code) and attached through a `cid:` reference: Gmail strips
+ * data: URIs from HTML bodies, so an inline attachment is the mechanism that
+ * actually renders there. The QR sits in a cream square (12 px padding, 1 px
+ * gold border) to the right of the code, and stacks ABOVE it under 620 px.
+ * The code text and the /j/<code> link are always present too, so the ticket
+ * is usable even with images blocked.
  *
- * This e-mail is NOT the invoice — it says so, and says the számla arrives
- * separately from the invoicing system (TACITo, card 04).
+ * All visual styles are inline; the single <style> block carries only the
+ * media queries (facts into one column, QR above the code, tighter side
+ * padding) for phone widths down to 320 px.
+ *
+ * This e-mail is NOT the invoice — the footer says so in exactly one
+ * sentence and says the számla arrives separately from the invoicing system
+ * (TACITo, card 04).
  */
 
 const TICKET_URL_BASE = "https://rezkorut.hu/j/";
@@ -98,13 +111,16 @@ export type TicketEmailResult = {
   error?: string;
 };
 
-const GREEN = "#1e4d40";
-const GOLD = "#b9975b";
-const INK = "#1d2523";
-const MUTED = "#5c6a66";
-const BORDER = "#dfe5e2";
+// Brand palette from app/globals.css (card 09 design contract — exact values).
+const GOLD = "#e6d5a3";
+const FOREST = "#0b1a10";
+const CARD_BG = "#0e2016";
+const BORDER = "#1a3828";
+const CREAM = "#f5f0e4";
+const CHARCOAL = "#06100a";
+const MUTED = "#9aa79e";
 
-const SANS = "'Helvetica Neue',Helvetica,Arial,sans-serif";
+const SANS = "'Lexend Deca','Helvetica Neue',Helvetica,Arial,sans-serif";
 const MONO = "'Courier New',Courier,monospace";
 
 function esc(value: string): string {
@@ -115,8 +131,10 @@ function esc(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** "4 500 Ft" with a non-breaking-space thousands separator (glossary format). */
 function money(huf: number): string {
-  return `${new Intl.NumberFormat("hu-HU").format(huf)} Ft`;
+  const grouped = String(huf).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
+  return `${grouped} Ft`;
 }
 
 function huDate(isoDate: string): string {
@@ -131,10 +149,9 @@ function huDate(isoDate: string): string {
 
 function concertFacts(data: TicketEmailData): { title: string; when: string; where: string } {
   const title = data.concert.title;
-  const when = [
-    data.concert.event_date ? huDate(data.concert.event_date) : "",
-    data.concert.event_time ? `${data.concert.event_time} óra` : "",
-  ]
+  // Glossary date format: „2026. november 27., 18:00” — month lowercase, dot
+  // after the day, time with a colon, joined by „, ”.
+  const when = [data.concert.event_date ? huDate(data.concert.event_date) : "", data.concert.event_time ?? ""]
     .filter(Boolean)
     .join(", ");
   const where = [data.concert.venue, data.concert.location].filter(Boolean).join(", ");
@@ -160,36 +177,94 @@ export function buildTicketEmailText(data: TicketEmailData): string {
   lines.push(`Fizetett összeg: ${money(data.tickets.reduce((sum, ticket) => sum + ticket.price_huf, 0))}`);
   lines.push("");
   lines.push("Ez a levél nem számla: a számlát a számlázási rendszerünktől külön e-mailben kapja.");
-  lines.push("A koncertre a kód mutatásával, nyomtatva vagy a telefonjáról is beléphet.");
+  lines.push("A koncertre a jegykód mutatásával, nyomtatva vagy a telefonjáról is beléphet.");
   lines.push("");
   lines.push("Réz körút");
   lines.push("https://rezkorut.hu");
+  lines.push("contact@andrasdenes.com");
   return lines.join("\n");
 }
+
+/**
+ * Brand QR PNG per ticket: errorCorrectionLevel H, margin 2, width 640,
+ * dark #0b1a10 on light #f5f0e4, never a logo inside the code. Returned as
+ * raw PNG buffers for the `cid:` attachments (no data: URI anywhere).
+ */
+export async function ticketQrPngs(tickets: TicketEmailTicket[]): Promise<Map<string, Buffer>> {
+  const pngs = new Map<string, Buffer>();
+  for (const ticket of tickets) {
+    pngs.set(
+      ticket.code,
+      await QRCode.toBuffer(ticketUrl(ticket.code), {
+        errorCorrectionLevel: "H",
+        margin: 2,
+        width: 640,
+        color: { dark: FOREST, light: CREAM },
+      }),
+    );
+  }
+  return pngs;
+}
+
+/**
+ * The <style> block carries ONLY the media queries — everything else is
+ * inline. Under 620 px: tighter side padding, the concert facts stack into
+ * one column (label above value) and each ticket's QR moves ABOVE its code
+ * (the QR cell is first in the DOM; `display:block` makes the dir="rtl"
+ * pair-stack fall back to reading order).
+ */
+const MEDIA_QUERIES = `
+  @media only screen and (max-width:620px) {
+    .em-p { padding-left:18px !important; padding-right:18px !important; }
+    .em-fl { display:block !important; width:auto !important; padding:2px 0 0 0 !important; }
+    .em-fv { display:block !important; width:auto !important; padding:2px 0 6px 0 !important; }
+    .em-qr { display:block !important; width:auto !important; padding:0 0 14px 0 !important; }
+    .em-tk { display:block !important; width:auto !important; padding:0 !important; }
+  }`;
 
 export function buildTicketEmailHtml(data: TicketEmailData): string {
   const facts = concertFacts(data);
   const total = data.tickets.reduce((sum, ticket) => sum + ticket.price_huf, 0);
 
+  const factRow = (label: string, value: string): string => `
+        <tr>
+          <td class="em-fl" width="110" style="width:110px;vertical-align:top;padding:4px 12px 4px 0;font-family:${SANS};font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:${MUTED};">${esc(label)}</td>
+          <td class="em-fv" style="vertical-align:top;padding:4px 0;font-family:${SANS};font-size:14px;line-height:1.5;color:${CREAM};">${esc(value)}</td>
+        </tr>`;
+
+  const factRows = [
+    facts.when ? factRow("Dátum", facts.when) : "",
+    facts.where ? factRow("Helyszín", facts.where) : "",
+  ]
+    .filter(Boolean)
+    .join("");
+
   const ticketBlocks = data.tickets
-    .map((ticket) => {
+    .map((ticket, index) => {
       const cid = `qr-${ticket.code}@rezkorut`;
-      const type = ticket.ticket_type_name
-        ? `<div style="font-family:${SANS};font-size:13px;line-height:1.5;color:${MUTED};padding-bottom:2px;">${esc(ticket.ticket_type_name)} &middot; ${money(ticket.price_huf)}</div>`
-        : `<div style="font-family:${SANS};font-size:13px;line-height:1.5;color:${MUTED};padding-bottom:2px;">${money(ticket.price_huf)}</div>`;
+      const typeLine = ticket.ticket_type_name
+        ? `<span style="color:${CREAM};font-weight:600;">${esc(ticket.ticket_type_name)}</span><span style="color:${MUTED};">&nbsp;&middot;&nbsp;</span><span style="color:${CREAM};font-weight:600;">${esc(money(ticket.price_huf))}</span>`
+        : `<span style="color:${CREAM};font-weight:600;">${esc(money(ticket.price_huf))}</span>`;
       return `
         <tr>
-          <td style="padding:14px 0;border-bottom:1px solid ${BORDER};">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          <td class="em-p" style="padding:20px 32px 22px 32px;border-top:1px dashed ${BORDER};">
+            <div style="font-family:${SANS};font-size:12px;letter-spacing:0.16em;font-variant:small-caps;color:${GOLD};">Jegy ${index + 1}/${data.tickets.length}</div>
+            <table dir="rtl" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;">
               <tr>
-                <td style="vertical-align:middle;padding-right:16px;">
-                  <img src="cid:${cid}" width="110" height="110" alt="Jegy kód: ${esc(ticket.code)}" style="display:block;width:110px;height:110px;border:1px solid ${BORDER};" />
+                <td class="em-qr" dir="ltr" width="136" style="width:136px;vertical-align:middle;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:separate;">
+                    <tr>
+                      <td style="background-color:${CREAM};border:1px solid ${GOLD};padding:12px;">
+                        <img src="cid:${esc(cid)}" width="110" height="110" alt="QR-kód: ${esc(ticket.code)}" style="display:block;width:110px;height:110px;border:0;" />
+                      </td>
+                    </tr>
+                  </table>
                 </td>
-                <td style="vertical-align:middle;">
-                  ${type}
-                  <div style="font-family:${MONO};font-size:19px;font-weight:700;letter-spacing:0.12em;color:${GREEN};">${esc(ticket.code)}</div>
-                  <div style="font-family:${SANS};font-size:12px;line-height:1.6;padding-top:6px;">
-                    <a href="${esc(ticketUrl(ticket.code))}" style="color:${GREEN};text-decoration:none;border-bottom:1px solid ${GOLD};">${esc(ticketUrl(ticket.code))}</a>
+                <td class="em-tk" dir="ltr" style="vertical-align:middle;padding:0 16px 0 0;">
+                  <div style="font-family:${SANS};font-size:14px;line-height:1.5;">${typeLine}</div>
+                  <div style="font-family:${MONO};font-size:17px;font-weight:700;letter-spacing:0.12em;color:${CREAM};padding-top:4px;">${esc(ticket.code)}</div>
+                  <div style="font-family:${SANS};font-size:12px;line-height:1.6;padding-top:8px;">
+                    <a href="${esc(ticketUrl(ticket.code))}" style="color:${MUTED};text-decoration:none;border-bottom:1px solid ${BORDER};">${esc(ticketUrl(ticket.code))}</a>
                   </div>
                 </td>
               </tr>
@@ -205,59 +280,60 @@ export function buildTicketEmailHtml(data: TicketEmailData): string {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no" />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="dark" />
     <title>Jegyek — ${esc(facts.title)}</title>
+    <style>${MEDIA_QUERIES}</style>
   </head>
-  <body style="margin:0;padding:0;background:#f4f4f1;-webkit-font-smoothing:antialiased;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f1;padding:28px 14px;">
+  <body style="margin:0;padding:0;background-color:${CHARCOAL};-webkit-font-smoothing:antialiased;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${CHARCOAL};">
       <tr>
-        <td align="center">
-          <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border:1px solid ${BORDER};">
+        <td align="center" style="padding:28px 10px;">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background-color:${CARD_BG};border:1px solid ${BORDER};border-collapse:separate;">
             <tr>
-              <td style="padding:26px 30px 0 30px;">
-                <div style="font-family:${SANS};font-size:12px;letter-spacing:0.22em;text-transform:uppercase;color:${INK};font-weight:700;">Réz körút</div>
-                <div style="height:3px;width:44px;background:${GOLD};margin-top:10px;"></div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:20px 30px 0 30px;font-family:${SANS};">
-              <h1 style="margin:0;font-size:22px;line-height:1.3;color:${INK};font-weight:700;">Köszönjük a vásárlást!</h1>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:14px 30px 0 30px;font-family:${SANS};">
-                <div style="font-size:16px;line-height:1.5;color:${GREEN};font-weight:700;">${esc(facts.title)}</div>
-                <div style="font-size:14px;line-height:1.6;color:${MUTED};padding-top:4px;">
-                  ${facts.when ? `${esc(facts.when)}<br />` : ""}${facts.where ? esc(facts.where) : ""}
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:18px 30px 0 30px;">
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                  ${ticketBlocks}
+              <td class="em-p" style="padding:30px 32px 0 32px;font-family:${SANS};">
+                <div style="font-size:14px;font-weight:700;letter-spacing:0.32em;text-transform:uppercase;color:${GOLD};">RÉZ KÖRÚT</div>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:12px;">
+                  <tr>
+                    <td style="height:2px;width:44px;background-color:${GOLD};font-size:0;line-height:0;">&nbsp;</td>
+                  </tr>
                 </table>
               </td>
             </tr>
             <tr>
-              <td align="right" style="padding:16px 30px 0 30px;font-family:${SANS};">
-                <span style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:${INK};font-weight:700;">Fizetett összeg</span>
-                <span style="font-size:16px;color:${INK};font-weight:600;padding-left:10px;white-space:nowrap;">${esc(money(total))}</span>
+              <td class="em-p" style="padding:20px 32px 0 32px;font-family:${SANS};">
+                <h1 style="margin:0;font-size:22px;line-height:1.3;font-weight:700;color:${CREAM};">Köszönjük a vásárlást!</h1>
+                <div style="font-size:17px;line-height:1.4;font-weight:600;color:${CREAM};padding-top:6px;">${esc(facts.title)}</div>
+              </td>
+            </tr>
+            ${
+              factRows
+                ? `<tr>
+              <td class="em-p" style="padding:18px 32px 0 32px;font-family:${SANS};">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${factRows}
+                </table>
+              </td>
+            </tr>`
+                : ""
+            }
+            <tr>
+              <td class="em-p" style="padding:14px 32px 0 32px;font-family:${SANS};">
+                <p style="margin:0;font-size:13px;line-height:1.6;color:${MUTED};">A koncertre a jegykód mutatásával, nyomtatva vagy a telefonjáról is beléphet.</p>
+              </td>
+            </tr>
+            ${ticketBlocks}
+            <tr>
+              <td class="em-p" align="right" style="padding:8px 32px 24px 32px;font-family:${SANS};">
+                <span style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:${MUTED};">Fizetett összeg</span>
+                <span style="font-size:16px;font-weight:700;color:${CREAM};padding-left:10px;white-space:nowrap;">${esc(money(total))}</span>
               </td>
             </tr>
             <tr>
-              <td style="padding:20px 30px 0 30px;"><div style="height:1px;background:${BORDER};"></div></td>
-            </tr>
-            <tr>
-              <td style="padding:16px 30px 28px 30px;font-family:${SANS};">
-                <p style="margin:0;font-size:13px;line-height:1.65;color:${MUTED};">
-                  Ez a levél nem számla: a számlát a számlázási rendszerünktől külön e-mailben kapja.
-                </p>
-                <p style="margin:12px 0 0 0;font-size:13px;line-height:1.65;color:${MUTED};">
-                  A koncertre a jegykód mutatásával, nyomtatva vagy a telefonjáról is beléphet.
-                </p>
-                <p style="margin:14px 0 0 0;font-size:12px;line-height:1.6;color:${MUTED};">
-                  Réz körút &middot; <a href="https://rezkorut.hu" style="color:${MUTED};text-decoration:none;">rezkorut.hu</a>
+              <td class="em-p" style="padding:18px 32px 30px 32px;font-family:${SANS};border-top:1px solid ${BORDER};">
+                <p style="margin:0;font-size:12px;line-height:1.7;color:${MUTED};">Ez a levél nem számla: a számlát a számlázási rendszerünktől külön e-mailben kapja.</p>
+                <p style="margin:10px 0 0 0;font-size:12px;line-height:1.7;color:${MUTED};">
+                  <a href="https://rezkorut.hu" style="color:${MUTED};text-decoration:none;">rezkorut.hu</a>
+                  <span>&nbsp;&middot;&nbsp;</span>
+                  <a href="mailto:contact@andrasdenes.com" style="color:${MUTED};text-decoration:none;">contact@andrasdenes.com</a>
                 </p>
               </td>
             </tr>
@@ -267,15 +343,6 @@ export function buildTicketEmailHtml(data: TicketEmailData): string {
     </table>
   </body>
 </html>`;
-}
-
-/** QR data URLs per ticket (generated with qrcode.toDataURL, as in the brief). */
-export async function ticketQrDataUrls(tickets: TicketEmailTicket[]): Promise<Map<string, string>> {
-  const urls = new Map<string, string>();
-  for (const ticket of tickets) {
-    urls.set(ticket.code, await QRCode.toDataURL(ticketUrl(ticket.code), { width: 240, margin: 1 }));
-  }
-  return urls;
 }
 
 /**
@@ -294,18 +361,13 @@ export async function sendTicketEmail(data: TicketEmailData): Promise<TicketEmai
     return { ok: false, skipped: true, error: "no buyer e-mail" };
   }
   try {
-    const qrUrls = await ticketQrDataUrls(data.tickets);
-    const attachments = data.tickets.map((ticket) => {
-      const dataUrl = qrUrls.get(ticket.code) ?? "";
-      const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
-      return {
-        filename: `jegy-${ticket.code}.png`,
-        content: base64,
-        encoding: "base64" as const,
-        contentType: "image/png",
-        cid: `qr-${ticket.code}@rezkorut`,
-      };
-    });
+    const pngs = await ticketQrPngs(data.tickets);
+    const attachments = data.tickets.map((ticket) => ({
+      filename: `jegy-${ticket.code}.png`,
+      content: pngs.get(ticket.code) ?? Buffer.alloc(0),
+      contentType: "image/png",
+      cid: `qr-${ticket.code}@rezkorut`,
+    }));
 
     const info = await transporter(cfg).sendMail({
       from: cfg.from,
