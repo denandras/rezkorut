@@ -7,6 +7,13 @@ export type Concert = {
    * pipe field (`id:rk-...`). Legacy lines may not have one yet.
    */
   id?: string;
+  /**
+   * `/jegyek/<id>` — set by `withTicketUrls` (lib/tickets-public) for concerts
+   * whose ticketing is `on_sale`. Server pages annotate the S3 concerts with
+   * it before rendering; it is never stored in the file. Drives the
+   * „Jegyvásárlás” CTA on the concert card.
+   */
+  ticketUrl?: string;
   date: string;
   time?: string;
   location: string;
