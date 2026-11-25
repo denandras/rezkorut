@@ -3,10 +3,13 @@ import type Stripe from "stripe";
 import { makeCode } from "@/lib/ticket-code";
 import {
   getConcert,
+  getDiscountCodeByPromotionCodeId,
   getTicketDb,
   getTicketTypes,
+  incrementDiscountTimesRedeemed,
   listTicketsForOrder,
   setConcertStatus,
+  type RkDiscountCode,
   type RkOrder,
   type RkTicket,
   type RkTicketType,
@@ -75,6 +78,86 @@ async function getOrderByPaymentIntent(paymentIntent: string): Promise<RkOrder |
     .maybeSingle();
   if (error) throw new Error(`[ticket-fulfil] rk_orders read (by payment_intent) failed: ${error.message}`);
   return (data as RkOrder | null) ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Discount allocation (card 12) — invoicing follows the money
+// ---------------------------------------------------------------------------
+
+/** What a paid session finalized: the money the buyer actually paid. */
+export type SessionPricing = {
+  /** `session.amount_total` — whole forints (what Stripe charged). */
+  paidHuf: number;
+  /** `session.total_details.amount_discount` — whole forints. */
+  discountHuf: number;
+  /** The code string the buyer typed (ours), the promotion code's code, or null. */
+  discountCode: string | null;
+  /** Our `rk_discount_codes` row id when the code is ours (times_redeemed +1), else null. */
+  discountRowId: string | null;
+};
+
+/**
+ * Card 12: allocates a paid session's discount across the tickets so each
+ * ticket carries its ALLOCATED gross price and the sum equals what the buyer
+ * paid EXACTLY:
+ *
+ *  - no discount → the list prices unchanged;
+ *  - with a discount the paid amount is split proportionally to the list
+ *    price (`allocated_i = floor(p_i * A / P)`), and the rounding remainder
+ *    is forced onto the LAST ticket — the sum equals `paidHuf` exactly,
+ *    never the list total.
+ *
+ * Every allocated price stays ≥ 0 and ≤ its list price; a ticket that
+ * allocates to 0 Ft is a free ticket (no invoice — the cron's ticket-level
+ * exclusion). Deterministic and pure — the harness verifies the invariant.
+ */
+export function allocateDiscountGross(listPrices: number[], pricing: SessionPricing): number[] {
+  const listTotal = listPrices.reduce((sum, price) => sum + price, 0);
+  if (pricing.discountHuf <= 0 || listPrices.length === 0 || listTotal <= 0) {
+    return [...listPrices];
+  }
+  const paid = pricing.paidHuf;
+  // Defensive clamps: a real discounted session always has 0 ≤ paid < list
+  // total; anything else is a payload mismatch and the list prices are the
+  // safer answer (the webhook reads real sessions).
+  if (paid < 0 || paid >= listTotal) {
+    return [...listPrices];
+  }
+  const allocated = listPrices.map((price) => Math.floor((price * paid) / listTotal));
+  // Remainder forced onto the last ticket so the sum is exact.
+  const allocatedSum = allocated.reduce((sum, value) => sum + value, 0);
+  allocated[allocated.length - 1] += paid - allocatedSum;
+  return allocated;
+}
+
+/**
+ * Reads the applied promotion code off a (paid) session: its `discounts`
+ * array, the promotion code object's own `code` string when the payload
+ * carries it, or our DB row matched by the promotion code id. A code applied
+ * on the Stripe page (allow_promotion_codes) that is not ours (a foreign
+ * promotion code in the account) still attributes honestly: its code string
+ * with no `times_redeemed` increment.
+ */
+async function resolveSessionDiscount(session: Stripe.Checkout.Session): Promise<SessionPricing> {
+  const discountHuf = Math.round((session.total_details?.amount_discount ?? 0) / 100);
+  const paidHuf = Math.round((session.amount_total ?? 0) / 100);
+
+  let discountCode: string | null = null;
+  let discountRowId: string | null = null;
+  const attached = session.discounts?.[0]?.promotion_code ?? null;
+  if (typeof attached === "string") {
+    const row: RkDiscountCode | null = await getDiscountCodeByPromotionCodeId(attached);
+    if (row) {
+      discountCode = row.code;
+      discountRowId = row.id;
+    }
+  } else if (attached && typeof attached === "object") {
+    discountCode = attached.code ?? null;
+    const row = attached.id ? await getDiscountCodeByPromotionCodeId(attached.id) : null;
+    discountRowId = row?.id ?? null;
+  }
+
+  return { paidHuf, discountHuf, discountCode, discountRowId };
 }
 
 // ---------------------------------------------------------------------------
@@ -166,18 +249,43 @@ function buyerPatchFromSession(order: RkOrder, session: Stripe.Checkout.Session)
  * then sends the ticket e-mail and stamps `emailed_at`. Callers resolve the
  * units themselves — the Stripe path maps them off the session's line items,
  * the free path (card 11) already knows them from its validation.
+ *
+ * Card 12 — `pricing` (the Stripe path always passes it, the free path never
+ * does): the order's `amount_huf` becomes the amount the buyer PAID (never
+ * the list price), the discount is stored (`discount_huf` + `discount_code`),
+ * and each ticket row carries its ALLOCATED gross price (the discount split
+ * proportionally, remainder on the last ticket — `allocateDiscountGross`).
+ * Our own `times_redeemed` counter of the used code is incremented once per
+ * fulfilled order.
  */
 async function writeFulfilment(
   order: RkOrder,
   units: ResolvedUnit[],
   orderPatch: Record<string, unknown>,
+  pricing: SessionPricing | null,
 ): Promise<Extract<FulfilResult, { outcome: "fulfilled" }>> {
   const orderId = order.id;
+  if (pricing) {
+    orderPatch.amount_huf = pricing.paidHuf;
+    orderPatch.discount_huf = pricing.discountHuf;
+    orderPatch.discount_code = pricing.discountCode;
+  }
   const { error: orderError } = await db().from("rk_orders").update(orderPatch).eq("id", orderId);
   if (orderError) throw new Error(`[ticket-fulfil] rk_orders update failed: ${orderError.message}`);
 
-  // One ticket row per paid unit — this is the only place tickets are created.
+  // One ticket row per paid unit — this is the only place tickets are
+  // created. Card 12: the price on the ticket is the ALLOCATED gross (the
+  // money), not the list price — the invoice, the storno, the e-mail and the
+  // success page all follow it.
+  const listPrices: number[] = [];
   const ticketRows = [];
+  for (const unit of units) {
+    for (let i = 0; i < unit.quantity; i++) {
+      listPrices.push(unit.type.price_huf);
+    }
+  }
+  const grossPrices = pricing ? allocateDiscountGross(listPrices, pricing) : listPrices;
+  let cursor = 0;
   for (const unit of units) {
     for (let i = 0; i < unit.quantity; i++) {
       ticketRows.push({
@@ -185,10 +293,11 @@ async function writeFulfilment(
         concert_id: order.concert_id,
         ticket_type_id: unit.type.id,
         ticket_type_name: unit.type.name,
-        price_huf: unit.type.price_huf,
+        price_huf: grossPrices[cursor],
         code: makeCode(),
         status: "valid",
       });
+      cursor += 1;
     }
   }
   const { data: insertedTickets, error: ticketError } = await db()
@@ -199,6 +308,16 @@ async function writeFulfilment(
     throw new Error(`[ticket-fulfil] rk_tickets insert failed: ${ticketError?.message ?? "unknown error"}`);
   }
   const tickets = insertedTickets as RkTicket[];
+
+  // Card 12: our own redemption counter — +1 per fulfilled order (the
+  // already_fulfilled guard above makes this idempotent on webhook replays).
+  if (pricing?.discountRowId) {
+    try {
+      await incrementDiscountTimesRedeemed(pricing.discountRowId);
+    } catch (err) {
+      console.error(`[ticket-fulfil] times_redeemed increment failed for code row ${pricing.discountRowId}:`, err);
+    }
+  }
 
   // Read-modify-write `sold` per type (blessed by the card at this volume).
   for (const unit of units) {
@@ -299,7 +418,11 @@ export async function fulfilOrder(session: Stripe.Checkout.Session): Promise<Ful
   if (paymentIntent && !order.stripe_payment_intent) {
     orderPatch.stripe_payment_intent = paymentIntent;
   }
-  return writeFulfilment(order, units, orderPatch);
+  // Card 12: the money the buyer actually paid — `amount_huf` becomes the
+  // finalized total, the discount is attributed (code + amount), and the
+  // tickets carry their allocated gross prices.
+  const pricing = await resolveSessionDiscount(session);
+  return writeFulfilment(order, units, orderPatch, pricing);
 }
 
 /**
@@ -327,16 +450,21 @@ export async function fulfilFreeOrder(orderId: string, units: ResolvedUnit[]): P
     return { outcome: "skipped", orderId, reason: "the free request carries no units" };
   }
 
-  return writeFulfilment(order, units, { status: "paid", paid_at: nowIso() });
+  // Free orders carry no money and no discount — no pricing patch.
+  return writeFulfilment(order, units, { status: "paid", paid_at: nowIso() }, null);
 }
 
 /**
  * Manual "re-fetch session" path: retrieves the session with its line items
- * expanded (webhook payloads never include line_items) and fulfils it.
+ * and its discounts expanded (webhook payloads may omit either; the expanded
+ * promotion code carries the buyer-facing code string even for a promotion
+ * code that is not ours) and fulfils it.
  * Idempotent through `fulfilOrder`.
  */
 export async function fetchSessionAndFulfil(stripe: Stripe, sessionId: string): Promise<FulfilResult> {
-  const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["line_items"] });
+  const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    expand: ["line_items", "discounts.promotion_code"],
+  });
   return fulfilOrder(session);
 }
 

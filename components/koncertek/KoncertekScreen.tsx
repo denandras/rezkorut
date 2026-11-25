@@ -94,16 +94,24 @@ export default function KoncertekScreen({
         </div>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h1 className="font-display text-xl font-bold text-neutral-100">Koncertek</h1>
-          <button
-            type="button"
-            onClick={() => {
-              setFormMode(formMode === "create" ? "closed" : "create");
-              setEditing(null);
-            }}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-[#0b1a10] transition-opacity hover:opacity-90"
-          >
-            {formMode === "create" ? "Új koncert bezárása" : "Új koncert"}
-          </button>
+          <div className="flex items-center gap-3">
+            <a
+              href="/intern/kedvezmenykodok"
+              className="text-sm text-neutral-400 transition-colors hover:text-primary"
+            >
+              Kedvezménykódok
+            </a>
+            <button
+              type="button"
+              onClick={() => {
+                setFormMode(formMode === "create" ? "closed" : "create");
+                setEditing(null);
+              }}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-[#0b1a10] transition-opacity hover:opacity-90"
+            >
+              {formMode === "create" ? "Új koncert bezárása" : "Új koncert"}
+            </button>
+          </div>
         </div>
 
         {/* Egészség-csempe */}

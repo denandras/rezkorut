@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import ConcertForm from "./ConcertForm";
+import DiscountCodesPanel from "./DiscountCodesPanel";
 import OrdersTable from "./OrdersTable";
 import StatBar from "./StatBar";
 import StatusPill, { pillState } from "./StatusPill";
@@ -13,6 +14,7 @@ import {
   huDateToIso,
   todayIsoInBudapest,
   type ApiConcert,
+  type ApiDiscountCode,
   type ApiOrder,
   type TacitoStatus,
 } from "./types";
@@ -29,11 +31,13 @@ export default function ConcertDetailScreen({
   initialConcert,
   initialOrders,
   initialStatus,
+  initialDiscountCodes,
 }: {
   concertId: string;
   initialConcert: ApiConcert | null;
   initialOrders: ApiOrder[] | null;
   initialStatus: TacitoStatus | null;
+  initialDiscountCodes: ApiDiscountCode[] | null;
 }) {
   const [concert, setConcert] = useState<ApiConcert | null>(initialConcert);
   const [orders, setOrders] = useState<ApiOrder[] | null>(initialOrders);
@@ -270,6 +274,15 @@ export default function ConcertDetailScreen({
               reloadConcert();
               reloadOrders();
             }}
+          />
+        </div>
+
+        {/* Kedvezménykódok (card 12): a koncert saját kódjai + a minden koncertre érvényesek */}
+        <div className="mb-4">
+          <DiscountCodesPanel
+            concertId={concertId}
+            concertTitle={concert.title}
+            initialCodes={initialDiscountCodes}
           />
         </div>
 

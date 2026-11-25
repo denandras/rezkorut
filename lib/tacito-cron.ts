@@ -89,6 +89,8 @@ export type TacitoInvoicesRunResult = {
   pending: number;
   stornoed: number;
   details: { ticket_code: string; invoice_number: string | null; error: string | null }[];
+  /** Draft mode only: the per-ticket allocated gross prices that would be invoiced. */
+  draft_details: { ticket_code: string; order_id: string; unit_price_gross: number }[];
 };
 
 /** Tickets of PAID orders, not void, no invoice yet — oldest first, capped per run. */
@@ -96,7 +98,7 @@ async function selectPendingTickets(limit: number): Promise<PendingTicket[]> {
   const { data, error } = await db()
     .from("rk_tickets")
     .select(
-      "*, order:rk_orders!inner(id, concert_id, buyer_name, buyer_email, buyer_phone, buyer_company, buyer_tax_number, address_country, address_postal, address_city, address_street, amount_huf, currency, stripe_session_id, stripe_payment_intent, status, paid_at, refunded_at, tacito_error, created_at)",
+      "*, order:rk_orders!inner(id, concert_id, buyer_name, buyer_email, buyer_phone, buyer_company, buyer_tax_number, address_country, address_postal, address_city, address_street, amount_huf, currency, stripe_session_id, stripe_payment_intent, status, paid_at, refunded_at, tacito_error, discount_code, discount_huf, created_at)",
     )
     .neq("status", "void")
     .is("tacito_invoice_id", null)
@@ -104,6 +106,12 @@ async function selectPendingTickets(limit: number): Promise<PendingTicket[]> {
     // Card 11: free (0 Ft) orders never get a TACITo invoice — no számla for
     // an ingyenes jegy. They are `paid` too, so the amount must filter them.
     .gt("rk_orders.amount_huf", 0)
+    // Card 12: the ticket-level twin — a discounted order (amount > 0) can
+    // still contain a 0 Ft ticket („Kedvezmény miatt 0 Ft"): its allocated
+    // gross price is 0, so it is invoiced at nothing and never queues.
+    // (Plain column name: on the BASE table the dotted embedded-resource
+    // path is not accepted by PostgREST.)
+    .gt("price_huf", 0)
     .order("created_at")
     .limit(limit);
   if (error) throw new Error(`[tacito-cron] pending tickets read failed: ${error.message}`);
@@ -124,9 +132,27 @@ async function countPendingTickets(): Promise<number> {
     .is("tacito_invoice_id", null)
     .eq("rk_orders.status", "paid")
     // Card 11: free (0 Ft) orders never queue for invoicing.
-    .gt("rk_orders.amount_huf", 0);
+    .gt("rk_orders.amount_huf", 0)
+    // Card 12: 0 Ft tickets of discounted orders never queue either.
+    .gt("price_huf", 0);
   if (error) throw new Error(`[tacito-cron] pending tickets count failed: ${error.message}`);
   return count ?? 0;
+}
+
+/**
+ * Card 12: order ids that contain at least one non-void 0 Ft ticket — the
+ * orders whose allocation produced a free ticket. Their invoice note says
+ * „Kedvezmény miatt 0 Ft” on every issued számla of the order. One query per
+ * run (the set is small: free tickets are the exception, not the rule).
+ */
+async function orderIdsWithZeroPricedTicket(): Promise<Set<string>> {
+  const { data, error } = await db()
+    .from("rk_tickets")
+    .select("order_id")
+    .eq("price_huf", 0)
+    .neq("status", "void");
+  if (error) throw new Error(`[tacito-cron] zero-priced tickets read failed: ${error.message}`);
+  return new Set(((data ?? []) as { order_id: string }[]).map((row) => row.order_id));
 }
 
 async function setTicketError(ticketId: string, message: string): Promise<void> {
@@ -140,15 +166,23 @@ async function setTicketError(ticketId: string, message: string): Promise<void> 
  * with the next ticket; transient (retryable) failures also land in
  * `tacito_error` and are simply retried by the next cron run.
  *
+ * `draft` (card 12 verification, also useful as a dry run): NO invoice is
+ * issued and NOTHING is stored or sent — each pending ticket's payload is
+ * created as a TACITo draft under `<reference>:draft` (a separate key, so a
+ * later real invoice under `<reference>:create` is untouched), its
+ * allocated gross price is reported in `draft_details`, and the draft is
+ * deleted again.
+ *
  * `deadlineMs` (default 240 s): when the elapsed time crosses it, the pass
  * stops before starting the next ticket so the route can still answer with
  * its summary inside the 300 s Hobby function limit — every finished ticket
  * is already stored, the rest stay pending for the next run.
  */
 export async function runTacitoInvoices(
-  options: { limit?: number; deadlineMs?: number } = {},
+  options: { limit?: number; deadlineMs?: number; draft?: boolean } = {},
 ): Promise<TacitoInvoicesRunResult> {
   const client = tacito();
+  const draft = options.draft === true;
   const limit = Math.min(options.limit ?? TACITO_INVOICES_PER_RUN, TACITO_INVOICES_PER_RUN);
   const deadline = Date.now() + Math.min(options.deadlineMs ?? 240_000, 240_000);
   const concerts = new Map<string, RkConcert | null>();
@@ -164,17 +198,62 @@ export async function runTacitoInvoices(
   }
 
   const pending = await selectPendingTickets(limit);
-  const result: TacitoInvoicesRunResult = { issued: 0, failed: 0, pending: 0, stornoed: 0, details: [] };
+  // Card 12: which orders contain a 0 Ft (free) ticket — only fetched when
+  // there is anything to invoice (one query per run).
+  const zeroOrders = pending.length > 0 ? await orderIdsWithZeroPricedTicket() : new Set<string>();
+  const result: TacitoInvoicesRunResult = {
+    issued: 0,
+    failed: 0,
+    pending: 0,
+    stornoed: 0,
+    details: [],
+    draft_details: [],
+  };
 
   for (const { ticket, order } of pending) {
     if (Date.now() > deadline) {
       console.warn("[tacito-cron] time budget reached — remaining tickets stay pending for the next run");
       break;
     }
+    if (draft) {
+      // Draft mode: create the draft (TACITo validates the payload exactly
+      // like a real create), report the allocated gross price, delete it.
+      const reference = `${ticketReference(ticket.id)}:draft`;
+      try {
+        const concert = await concertOf(ticket.concert_id);
+        const { payload } = buildTicketInvoice(order, ticket, concert, {
+          orderHasZeroPricedTicket: zeroOrders.has(order.id),
+        });
+        const gross = Number(payload.lines[0]?.unit_price_gross ?? 0);
+        const draftInvoice = await client.createDraft(reference, payload);
+        result.draft_details.push({
+          ticket_code: ticket.code,
+          order_id: order.id,
+          unit_price_gross: gross,
+        });
+        try {
+          await client.deleteDraft(draftInvoice.id);
+        } catch (error) {
+          console.warn(
+            `[tacito-cron] draft ${draftInvoice.id} of ticket ${ticket.code} could not be deleted (harmless — it stays a draft, never issued):`,
+            formatTacitoError(error),
+          );
+        }
+      } catch (error) {
+        const message = formatTacitoError(error);
+        result.failed += 1;
+        result.details.push({ ticket_code: ticket.code, invoice_number: null, error: message });
+        console.error(`[tacito-cron] draft-mode create failed for ticket ${ticket.code}:`, message);
+      }
+      continue;
+    }
+
     const reference = ticketReference(ticket.id);
     try {
       const concert = await concertOf(ticket.concert_id);
-      const { payload } = buildTicketInvoice(order, ticket, concert);
+      const { payload } = buildTicketInvoice(order, ticket, concert, {
+        orderHasZeroPricedTicket: zeroOrders.has(order.id),
+      });
       const invoice = await client.createAndIssue(reference, payload);
 
       // Store first (the invoice exists from here on, whatever happens next).
@@ -219,7 +298,10 @@ export async function runTacitoInvoices(
   }
 
   // Storno pass runs in the same cron (card: "run this in the invoices cron").
-  result.stornoed = await runTacitoStornos(client);
+  // Draft mode never performs real writes, so it is skipped there.
+  if (!draft) {
+    result.stornoed = await runTacitoStornos(client);
+  }
 
   result.pending = await countPendingTickets();
   return result;

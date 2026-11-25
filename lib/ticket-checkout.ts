@@ -2,11 +2,14 @@ import Stripe from "stripe";
 
 import {
   getConcert,
+  getDiscountCodeByCode,
   getTicketDb,
   getTicketTypes,
+  type RkDiscountCode,
   type RkOrder,
   type RkTicketType,
 } from "@/lib/ticket-db";
+import { normalizeDiscountCode } from "@/lib/discount-codes";
 
 /**
  * Public checkout pipeline (card 03): validate the cart against the DB, insert
@@ -58,6 +61,8 @@ export type CheckoutRequest = {
   items: CheckoutItem[];
   buyer: CheckoutBuyer;
   accept_terms: boolean;
+  /** Card 12: the optional kedvezménykód the buyer typed on our page. */
+  discount_code?: string;
 };
 
 /** Validates the JSON body shape. `accept_terms` is checked by the route. */
@@ -132,6 +137,13 @@ export function parseCheckoutRequest(raw: unknown): { request: CheckoutRequest }
     return { error: "Az utca, házszám megadása kötelező." };
   }
 
+  // Card 12: an optional kedvezménykód text field — normalized (trimmed,
+  // uppercased) here; the DB-side validation happens in the pipeline.
+  let discountCode: string | undefined;
+  if (typeof body.discount_code === "string" && body.discount_code.trim().length > 0) {
+    discountCode = normalizeDiscountCode(body.discount_code);
+  }
+
   return {
     request: {
       concert_id: concertId,
@@ -147,6 +159,7 @@ export function parseCheckoutRequest(raw: unknown): { request: CheckoutRequest }
         },
       },
       accept_terms: body.accept_terms === true,
+      ...(discountCode ? { discount_code: discountCode } : {}),
     },
   };
 }
@@ -157,7 +170,55 @@ export type CheckoutSessionResult = {
   orderId: string;
   amountHuf: number;
   lineItems: { priceId: string; quantity: number }[];
+  /** Card 12: the resolved discount row when the buyer typed a code. */
+  discount: RkDiscountCode | null;
 };
+
+/**
+ * Card 12 — buy-flow validation of the buyer-typed kedvezménykód, BEFORE any
+ * session is created: unknown / inactive / expired / exhausted / wrong-
+ * concert codes are refused with a Hungarian message, and so is a code
+ * whose value would push the price negative or under the minimum charge.
+ * The exact discount is Stripe's own math — the webhook reads back what
+ * Stripe finalized (`total_details.amount_discount`).
+ */
+export async function resolveDiscountForCheckout(
+  rawCode: string,
+  concertId: string,
+  amountHuf: number,
+): Promise<RkDiscountCode> {
+  const code = normalizeDiscountCode(rawCode);
+  const row = await getDiscountCodeByCode(code);
+  if (!row) {
+    throw new CheckoutError(400, "discount_unknown", "Ismeretlen kedvezménykód.");
+  }
+  if (!row.active) {
+    throw new CheckoutError(409, "discount_inactive", "Ez a kedvezménykód jelenleg nem használható.");
+  }
+  if (row.expires_at && Date.now() > Date.parse(row.expires_at)) {
+    throw new CheckoutError(409, "discount_expired", "Ez a kedvezménykód lejárt.");
+  }
+  if (row.max_redemptions !== null && row.times_redeemed >= row.max_redemptions) {
+    throw new CheckoutError(409, "discount_exhausted", "Ezt a kedvezménykódot már beváltották a maximális alkalommal.");
+  }
+  if (row.concert_id !== null && row.concert_id !== concertId) {
+    throw new CheckoutError(409, "discount_wrong_concert", "Ez a kedvezménykód erre a koncertre nem érvényes.");
+  }
+  // A kód értéke nem teheti negatívvá az árat, és a kedvezmény után is marad
+  // megfizetendő összeg (a Stripe 200 forintos minimuma). A becslés csak ezeket
+  // a visszautasításokat vizsgálja — a pontos összeg a sessionből jön vissza.
+  const estimate =
+    row.amount_off_huf !== null
+      ? row.amount_off_huf
+      : Math.floor((amountHuf * (row.percent_off ?? 0)) / 100);
+  if (estimate > amountHuf) {
+    throw new CheckoutError(409, "discount_exceeds_total", "A kedvezménykód értéke meghaladná a fizetendő összeget.");
+  }
+  if (amountHuf - estimate < MIN_CHARGE_HUF) {
+    throw new CheckoutError(409, "discount_below_minimum", "A kedvezmény után fizetendő összeg nem éri el a minimális 200 forintot.");
+  }
+  return row;
+}
 
 /**
  * Full server-side checkout: validations against the live DB, pending order
@@ -235,8 +296,16 @@ export async function createOrderAndCheckoutSession(
     throw new CheckoutError(400, "amount_below_minimum", "A fizetendő összeg legalább 200 forint.");
   }
 
+  // Card 12: the buyer-typed kedvezménykód is validated server-side BEFORE
+  // the order row and the session exist — a refused code leaves no session.
+  const discount = request.discount_code
+    ? await resolveDiscountForCheckout(request.discount_code, concert.concert_id, amountHuf)
+    : null;
+
   // Pending order first (buyer snapshot — deliberately WITHOUT company name
   // and tax number: private buyers only, those columns are never written).
+  // The stored amount is the LIST total; the fulfilment overwrites it with
+  // the amount Stripe finalized (`amount_total` — the money the buyer paid).
   const { data: order, error: insertError } = await db
     .from("rk_orders")
     .insert({
@@ -287,6 +356,15 @@ export async function createOrderAndCheckoutSession(
     },
     success_url: `${base}/jegyek/koszonjuk?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${base}/jegyek/${concert.concert_id}?canceled=1`,
+    // Card 12: kedvezménykódok — mutually exclusive at Stripe (verified live
+    // 2026-11-25: "You may only specify one of these parameters:
+    // allow_promotion_codes, discounts"): when the buyer typed a code on OUR
+    // page it is attached up front as the resolved promotion code; without a
+    // typed code the buyer may still enter one on the Stripe page (Stripe
+    // validates it there — the webhook reads back whatever it applied).
+    ...(discount
+      ? { discounts: [{ promotion_code: discount.stripe_promotion_code_id }] }
+      : { allow_promotion_codes: true }),
   };
 
   const session = await stripe.checkout.sessions.create(params);
@@ -305,5 +383,6 @@ export async function createOrderAndCheckoutSession(
     orderId: (order as RkOrder).id,
     amountHuf,
     lineItems,
+    discount,
   };
 }

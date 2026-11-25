@@ -464,6 +464,11 @@ function hungarianDate(dateIso: string | null): string {
 /** The fixed service line every ticket invoice carries (owner decision: no per-concert products). */
 export const TICKET_LINE_DESCRIPTION = "Előadó-művészeti tevékenység";
 
+/** HU thousands grouping for the invoice note (`2 000 Ft` — deterministic, no locale). */
+function formatHufForNote(amount: number): string {
+  return String(Math.round(amount)).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
+}
+
 export type TicketInvoiceInput = {
   reference: string;
   payload: TacitoInvoicePayload;
@@ -480,11 +485,20 @@ export type TicketInvoiceInput = {
  *   `performance_date` = the concert's date.
  * - `invoice_note`: one fact per line — concert, date + time, venue, ticket
  *   type, ticket code, order id (last 8 chars). No logistics text.
+ * - Card 12 (invoicing follows the money): the ticket's `price_huf` is its
+ *   ALLOCATED gross price (the discount split, remainder on the last ticket
+ *   — written at fulfilment), so the line already prices the ticket at what
+ *   the buyer paid for it. A discounted order adds ONE extra note line
+ *   `Kedvezmény: <kód> (-X Ft)` (the order's discount — never a separate
+ *   invoice line), and when the order's allocation produced a 0 Ft ticket
+ *   (that ticket gets no invoice at all), the note says so:
+ *   „Kedvezmény miatt 0 Ft”.
  */
 export function buildTicketInvoice(
-  order: Pick<RkOrder, "id" | "buyer_name" | "buyer_email" | "buyer_tax_number" | "address_country" | "address_postal" | "address_city" | "address_street" | "paid_at">,
+  order: Pick<RkOrder, "id" | "buyer_name" | "buyer_email" | "buyer_tax_number" | "address_country" | "address_postal" | "address_city" | "address_street" | "paid_at" | "discount_code" | "discount_huf">,
   ticket: Pick<RkTicket, "id" | "price_huf" | "ticket_type_name" | "code">,
   concert: Pick<RkConcert, "title" | "event_date" | "event_time" | "venue" | "location"> | null,
+  options: { orderHasZeroPricedTicket?: boolean } = {},
 ): TicketInvoiceInput {
   const issueDate = budapestDateString(order.paid_at ?? null);
 
@@ -511,6 +525,12 @@ export function buildTicketInvoice(
     ticket.ticket_type_name ? `Jegytípus: ${ticket.ticket_type_name}` : "",
     `Jegy: ${ticket.code}`,
     `Rendelés: ${order.id.slice(-8)}`,
+    // Card 12: one extra note line for the discount — never a separate line.
+    order.discount_code && order.discount_huf > 0
+      ? `Kedvezmény: ${order.discount_code} (-${formatHufForNote(order.discount_huf)} Ft)`
+      : "",
+    // Card 12: a 0 Ft (free) ticket gets no invoice; the note explains why.
+    options.orderHasZeroPricedTicket ? "Kedvezmény miatt 0 Ft" : "",
   ].filter(Boolean);
 
   const payload: TacitoInvoicePayload = {

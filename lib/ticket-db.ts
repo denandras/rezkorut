@@ -69,6 +69,32 @@ export type RkOrder = {
   paid_at: string | null;
   refunded_at: string | null;
   tacito_error: string | null;
+  /** Card 12: the discount code the buyer used (what they typed, uppercase); null = no discount. */
+  discount_code: string | null;
+  /** Card 12: the discount Stripe finalized on the session, in whole forints. */
+  discount_huf: number;
+  created_at: string;
+};
+
+/**
+ * A kedvezménykód (card 12): one Stripe coupon + promotion code pair.
+ * `concert_id` null = minden koncertre. Exactly one of `percent_off` /
+ * `amount_off_huf` is set. Rows are never deleted — deactivation flips
+ * `active` on the Stripe objects and here; `times_redeemed` is our own
+ * counter, incremented by the fulfilment on a paid session.
+ */
+export type RkDiscountCode = {
+  id: string;
+  concert_id: string | null;
+  code: string;
+  stripe_coupon_id: string;
+  stripe_promotion_code_id: string;
+  percent_off: number | null;
+  amount_off_huf: number | null;
+  max_redemptions: number | null;
+  times_redeemed: number;
+  expires_at: string | null;
+  active: boolean;
   created_at: string;
 };
 
@@ -291,6 +317,99 @@ export async function listConcertsWithSales(): Promise<ConcertSales[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Discount codes (card 12) — Stripe Promotion Codes as the engine
+// ---------------------------------------------------------------------------
+
+/** All discount code rows, newest first (the dashboard's global list). */
+export async function listDiscountCodes(): Promise<RkDiscountCode[]> {
+  const { data, error } = await db()
+    .from("rk_discount_codes")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw fail("listDiscountCodes", error);
+  return (data ?? []) as RkDiscountCode[];
+}
+
+/** The row of one buyer-typed code (input must already be uppercase). */
+export async function getDiscountCodeByCode(code: string): Promise<RkDiscountCode | null> {
+  const { data, error } = await db()
+    .from("rk_discount_codes")
+    .select("*")
+    .eq("code", code)
+    .maybeSingle();
+  if (error) throw fail("getDiscountCodeByCode", error);
+  return (data as RkDiscountCode | null) ?? null;
+}
+
+/** One row by its id (the intern on/off switch targets it). */
+export async function getDiscountCodeById(id: string): Promise<RkDiscountCode | null> {
+  const { data, error } = await db()
+    .from("rk_discount_codes")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw fail("getDiscountCodeById", error);
+  return (data as RkDiscountCode | null) ?? null;
+}
+
+/** The row behind a Stripe promotion code id (webhook attribution). */
+export async function getDiscountCodeByPromotionCodeId(
+  stripePromotionCodeId: string,
+): Promise<RkDiscountCode | null> {
+  const { data, error } = await db()
+    .from("rk_discount_codes")
+    .select("*")
+    .eq("stripe_promotion_code_id", stripePromotionCodeId)
+    .maybeSingle();
+  if (error) throw fail("getDiscountCodeByPromotionCodeId", error);
+  return (data as RkDiscountCode | null) ?? null;
+}
+
+/** Insert the DB row of a freshly created Stripe coupon + promotion code. */
+export async function insertDiscountCode(
+  row: Omit<RkDiscountCode, "id" | "times_redeemed" | "active" | "created_at">,
+): Promise<RkDiscountCode> {
+  const { data, error } = await db()
+    .from("rk_discount_codes")
+    .insert({ ...row, active: true })
+    .select()
+    .single();
+  if (error || !data) throw fail("insertDiscountCode", error);
+  return data as RkDiscountCode;
+}
+
+/** Flips `active` on the row (the Stripe objects are flipped by the caller). */
+export async function setDiscountCodeActive(
+  id: string,
+  active: boolean,
+): Promise<RkDiscountCode | null> {
+  const { data, error } = await db()
+    .from("rk_discount_codes")
+    .update({ active })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+  if (error) throw fail("setDiscountCodeActive", error);
+  return (data as RkDiscountCode | null) ?? null;
+}
+
+/**
+ * Our own redemption counter, +1 for a paid session that used the code
+ * (read-modify-write, the same blessed pattern as `rk_ticket_types.sold`).
+ */
+export async function incrementDiscountTimesRedeemed(
+  id: string,
+): Promise<void> {
+  const row = await db().from("rk_discount_codes").select("times_redeemed").eq("id", id).maybeSingle();
+  const current = (row.data as { times_redeemed: number } | null)?.times_redeemed ?? 0;
+  const { error } = await db()
+    .from("rk_discount_codes")
+    .update({ times_redeemed: current + 1 })
+    .eq("id", id);
+  if (error) throw fail("incrementDiscountTimesRedeemed", error);
+}
+
+// ---------------------------------------------------------------------------
 // Orders + tickets
 // ---------------------------------------------------------------------------
 
@@ -354,7 +473,7 @@ export async function getTacitoStatusData(): Promise<TacitoStatusData> {
   const [ticketsRes, ordersRes] = await Promise.all([
     client
       .from("rk_tickets")
-      .select("id,code,status,tacito_invoice_id,tacito_nav_outcome,tacito_error,created_at,order_id"),
+      .select("id,code,status,tacito_invoice_id,tacito_nav_outcome,tacito_error,created_at,order_id,price_huf"),
     client.from("rk_orders").select("id,status,amount_huf"),
   ]);
   if (ticketsRes.error) throw fail("getTacitoStatusData (tickets)", ticketsRes.error);
@@ -369,20 +488,25 @@ export async function getTacitoStatusData(): Promise<TacitoStatusData> {
     tacito_error: string | null;
     created_at: string;
     order_id: string;
+    price_huf: number;
   };
   const tickets = (ticketsRes.data ?? []) as TicketRow[];
   const orders = (ordersRes.data ?? []) as { id: string; status: string; amount_huf: number }[];
   const orderStatusById = new Map(orders.map((order) => [order.id, order]));
 
   // Card 11: free (0 Ft) orders never get a TACITo invoice — they are `paid`
-  // too, so pending must skip them by amount.
+  // too, so pending must skip them by amount. Card 12 adds the ticket-level
+  // twin: a discounted order (amount > 0) can still contain a 0 Ft ticket
+  // ("Kedvezmény miatt 0 Ft") — that ticket is invoiced at nothing, so it
+  // never queues either.
   const pending = tickets.filter((ticket) => {
     const order = orderStatusById.get(ticket.order_id);
     return (
       !ticket.tacito_invoice_id &&
       ticket.status !== "void" &&
       order?.status === "paid" &&
-      order.amount_huf > 0
+      order.amount_huf > 0 &&
+      ticket.price_huf > 0
     );
   });
   const errored = tickets

@@ -89,6 +89,9 @@ export default function BuyForm({
   const [invoiceByEmail, setInvoiceByEmail] = useState(true);
   const [errors, setErrors] = useState<string[] | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Card 12: the optional kedvezménykód — validated server-side before the
+  // session exists; the exact discount is Stripe's own math.
+  const [discountCode, setDiscountCode] = useState("");
 
   // --- Free request state (card 11) ---
   const [freeQuantities, setFreeQuantities] = useState<Record<string, number>>({});
@@ -179,6 +182,7 @@ export default function BuyForm({
           },
         },
         accept_terms: true,
+        ...(discountCode.trim().length > 0 ? { discount_code: discountCode.trim().toUpperCase() } : {}),
       }),
     })
       .then(async (response) => {
@@ -344,6 +348,26 @@ export default function BuyForm({
               <span className="text-neutral-300">
                 Összesen: <span className="font-semibold text-white">{formatHuf(totalPrice)} Ft</span>
               </span>
+            </div>
+
+            {/* Kedvezménykód (card 12): opcionális mező, a szerver a fizetés
+                indítása ELŐTT ellenőrzi; a pontos kedvezményt a Stripe
+                számolja el. */}
+            <div className="mt-3">
+              <label className={labelClass} htmlFor="buyer-discount-code">
+                Kedvezménykód (nem kötelező)
+              </label>
+              <input
+                id="buyer-discount-code"
+                type="text"
+                value={discountCode}
+                onChange={(event) => setDiscountCode(event.target.value.toUpperCase())}
+                maxLength={24}
+                autoCapitalize="characters"
+                autoComplete="off"
+                placeholder="KÓD"
+                className={inputClass}
+              />
             </div>
           </section>
 

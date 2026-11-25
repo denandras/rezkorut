@@ -28,6 +28,19 @@ function hasLineItems(session: Stripe.Checkout.Session): boolean {
   return (session.line_items?.data?.length ?? 0) > 0;
 }
 
+/**
+ * Card 12: a discounted session must also carry its `discounts` (the applied
+ * promotion code) for the attribution — when the payload has a discount but
+ * no discounts info, the session is re-fetched instead of fulfilled from
+ * the payload. (Verified live: sessions carry `discounts` on retrieve, and
+ * the payload of a completed session carries them too; this is the guard for
+ * a payload that does not.)
+ */
+function hasDiscountInfo(session: Stripe.Checkout.Session): boolean {
+  const discount = session.total_details?.amount_discount ?? 0;
+  return discount === 0 || (session.discounts?.length ?? 0) > 0;
+}
+
 function paymentIntentOf(object: unknown): string | null {
   const value = object as { payment_intent?: unknown } | null;
   const pi = value?.payment_intent;
@@ -65,16 +78,18 @@ export async function POST(req: NextRequest) {
           console.log(`[api/tickets/webhook/stripe] session ${session.id} completed but payment_status=${session.payment_status} — ignored`);
           return NextResponse.json({ received: true, ignored: "payment_status_not_paid" });
         }
-        const result = hasLineItems(session)
-          ? await fulfilOrder(session)
-          : await fetchSessionAndFulfil(stripe, session.id);
+        const result =
+          hasLineItems(session) && hasDiscountInfo(session)
+            ? await fulfilOrder(session)
+            : await fetchSessionAndFulfil(stripe, session.id);
         return NextResponse.json({ received: true, fulfil: describeFulfil(result) });
       }
       case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const result = hasLineItems(session)
-          ? await fulfilOrder(session)
-          : await fetchSessionAndFulfil(stripe, session.id);
+        const result =
+          hasLineItems(session) && hasDiscountInfo(session)
+            ? await fulfilOrder(session)
+            : await fetchSessionAndFulfil(stripe, session.id);
         return NextResponse.json({ received: true, fulfil: describeFulfil(result) });
       }
       case "charge.refunded": {
