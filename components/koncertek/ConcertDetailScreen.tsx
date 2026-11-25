@@ -79,44 +79,14 @@ export default function ConcertDetailScreen({
     }
   }, [initialOrders, reloadOrders]);
 
-  /**
-   * Why the sales cannot start yet — computed from the SAVED types, the same
-   * facts the publish endpoint checks server-side. Shown inline after the
-   * click, never pre-emptively.
-   */
-  function explainPublishBlock(reason: string): string {
-    return reason;
-  }
-
   function handlePublish() {
     if (actionPending) return;
     setActionError(null);
     setActionNotice(null);
 
-    const types = concert?.ticketing?.types ?? [];
-    const activeTypes = types.filter((type) => type.active);
-    if (activeTypes.length === 0) {
-      setActionError(
-        explainPublishBlock(
-          "Nincs még mentett, aktív jegytípus – hozzon létre egyet és mentse el előbb.",
-        ),
-      );
-      return;
-    }
-    if (activeTypes.some((type) => type.price_huf < 200)) {
-      setActionError(
-        explainPublishBlock("Van jegytípus, amelynek ára kevesebb mint 200 forint – növelje az árat."),
-      );
-      return;
-    }
-    const iso = huDateToIso(concert?.date ?? "");
-    if (!iso || iso < todayIsoInBudapest()) {
-      setActionError(
-        explainPublishBlock("A koncert dátuma már elmúlt, a jegyértékesítés nem indítható."),
-      );
-      return;
-    }
-
+    // The publish button is unreachable while a requirement fails, so there
+    // is no client-side pre-check here: the POST keeps validating on the
+    // server, and its inline error path stays the only failure surface.
     setActionPending(true);
     fetch(`/api/intern/koncertek/${concertId}/publish`, { method: "POST" })
       .then(async (response) => {
@@ -182,6 +152,41 @@ export default function ConcertDetailScreen({
   const onSale = ticketing?.status === "on_sale" || ticketing?.status === "sold_out";
   const revenue = ticketing?.revenue_huf ?? 0;
   const sold = ticketing?.sold ?? 0;
+
+  // Why the sales cannot start yet — derived from the concert's SAVED state
+  // (the same state every save refreshes via reloadConcert; no extra fetch).
+  // The publish endpoint re-checks the same facts server-side: the disabled
+  // button is an owner-requested UI courtesy (2026-11-25, this one button
+  // only), never the guard.
+  const activeTypes = (ticketing?.types ?? []).filter((type) => type.active);
+  const eventDateIso = huDateToIso(concert.date);
+  const dateIsFuture = eventDateIso !== null && eventDateIso >= todayIsoInBudapest();
+  const publishChecks = [
+    {
+      ok: activeTypes.length > 0,
+      met: "Van aktív jegytípus",
+      blocker: "Mentse el legalább egy aktív jegytípust.",
+    },
+    {
+      ok: !activeTypes.some((type) => type.price_huf > 0 && type.price_huf < 200),
+      met: "Minden fizetős jegy legalább 200 Ft",
+      blocker: "Minden fizetős jegy legalább 200 Ft legyen.",
+    },
+    {
+      ok: dateIsFuture,
+      met: "A koncert dátuma jövőbeli",
+      blocker: "A koncert dátuma jövőbeli legyen.",
+    },
+    {
+      ok: activeTypes.every((type) => type.stripe_price_id),
+      met: "A jegytípusok ára átvezetve a fizetési rendszerbe",
+      blocker:
+        "A jegytípusok ára még nem került át a fizetési rendszerbe; mentse el újra a jegytípusokat.",
+    },
+  ];
+  const publishBlockers = publishChecks
+    .filter((check) => !check.ok)
+    .map((check) => check.blocker);
 
   return (
     <div className="flex min-h-dvh flex-col bg-background-dark">
@@ -286,18 +291,37 @@ export default function ConcertDetailScreen({
             </div>
           ) : (
             <div className="mt-2">
-              <button
-                type="button"
-                onClick={handlePublish}
-                className={`inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-[#0b1a10] transition-opacity hover:opacity-90 ${
-                  actionPending ? "opacity-70" : ""
-                }`}
-              >
-                {actionPending ? "Indítás…" : "Jegyértékesítés indítása"}
-              </button>
-              <p className="mt-2 text-xs text-neutral-500">
-                Indításhoz kell legalább egy mentett, aktív jegytípus és nem múltbeli dátum.
-              </p>
+              {publishBlockers.length > 0 ? (
+                // Letiltva, amíg bármely feltétel nem teljesül (owner decision
+                // 2026-11-25). Nincs hover-effektus, nincs onClick — a title
+                // az első blokkoló ok, a lista alatta minden okot mutat.
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  title={publishBlockers[0]}
+                  className="inline-flex cursor-not-allowed items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-[#0b1a10] opacity-50"
+                >
+                  Jegyértékesítés indítása
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handlePublish}
+                  className={`inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-[#0b1a10] transition-opacity hover:opacity-90 ${
+                    actionPending ? "opacity-70" : ""
+                  }`}
+                >
+                  {actionPending ? "Indítás…" : "Jegyértékesítés indítása"}
+                </button>
+              )}
+              <ul className="mt-3 space-y-1 text-xs text-neutral-400">
+                {publishChecks.map((check) => (
+                  <li key={check.blocker}>
+                    {check.ok ? "✓" : "–"} {check.ok ? check.met : check.blocker}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
           {actionError && (
