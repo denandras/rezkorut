@@ -1,4 +1,4 @@
-import { getTicketDb, type TicketKind } from "@/lib/ticket-db";
+import { budapestDateOf, getTicketDb, type TicketKind } from "@/lib/ticket-db";
 import { isValidCode } from "@/lib/ticket-code";
 import type { Concert } from "@/lib/upcoming-concerts";
 
@@ -29,6 +29,14 @@ export type PublicTicketType = {
   price_huf: number;
   /** Capacity minus sold; null when the type has no capacity cap. */
   remaining: number | null;
+  /**
+   * Card 13: the closing day of the early-bird window (`YYYY-MM-DD`,
+   * Europe/Budapest) — the stored `sales_end` rendered in the buyer's
+   * timezone, precomputed server-side so the deadline text is identical in
+   * the server render and the client. Null for standard types and for an
+   * early bird with no deadline.
+   */
+  sales_end_date: string | null;
 };
 
 export type PublicConcertTicketing = {
@@ -44,6 +52,12 @@ export type PublicConcertTicketing = {
   on_sale: boolean;
   /** Active ticket types inside their sales window, in `sort` order. */
   types: PublicTicketType[];
+  /**
+   * Card 13: true when the concert is on sale but every active type's window
+   * has already ended — the buy page then says the sales have closed, not
+   * that there is nothing to buy.
+   */
+  sales_closed: boolean;
 };
 
 /**
@@ -91,7 +105,11 @@ export async function getPublicConcertTicketing(
   if (!concert) return null;
 
   const now = Date.now();
-  const types = ((typesRes.data ?? []) as {
+  // Card 13: an early-bird type outside its window is simply not offered —
+  // the window is a pair of stored instants, compared without any timezone
+  // math. `sales_closed` distinguishes "everything ended" from "nothing
+  // purchasable yet": only an ended window closes the sales for good.
+  const rows = (typesRes.data ?? []) as {
     id: string;
     name: string;
     kind: TicketKind;
@@ -101,21 +119,27 @@ export async function getPublicConcertTicketing(
     active: boolean;
     sales_start: string | null;
     sales_end: string | null;
-  }[])
-    .filter(
-      (type) =>
-        type.active &&
-        (!type.sales_start || now >= Date.parse(type.sales_start)) &&
-        (!type.sales_end || now <= Date.parse(type.sales_end)),
-    )
-    .map((type) => ({
-      id: type.id,
-      name: type.name,
-      kind: type.kind,
-      price_huf: type.price_huf,
-      remaining:
-        type.capacity === null ? null : Math.max(0, type.capacity - type.sold),
-    }));
+  }[];
+  const active = rows.filter((type) => type.active);
+  const offered = active.filter(
+    (type) =>
+      (!type.sales_start || now >= Date.parse(type.sales_start)) &&
+      (!type.sales_end || now <= Date.parse(type.sales_end)),
+  );
+  const types = offered.map((type) => ({
+    id: type.id,
+    name: type.name,
+    kind: type.kind,
+    price_huf: type.price_huf,
+    remaining:
+      type.capacity === null ? null : Math.max(0, type.capacity - type.sold),
+    sales_end_date:
+      type.kind === "early_bird" && type.sales_end ? budapestDateOf(type.sales_end) : null,
+  }));
+  const sales_closed =
+    active.length > 0 &&
+    offered.length === 0 &&
+    active.every((type) => type.sales_end !== null && now > Date.parse(type.sales_end));
 
   return {
     concert_id: concert.concert_id,
@@ -126,6 +150,7 @@ export async function getPublicConcertTicketing(
     location: concert.location,
     on_sale: concert.status === "on_sale",
     types,
+    sales_closed,
   };
 }
 

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
+import { huUntil } from "@/components/hu-dates";
 import type { PublicTicketType } from "@/lib/tickets-public";
 
 /**
@@ -308,6 +309,14 @@ export default function BuyForm({
                           </span>
                         )}
                       </p>
+                      {/* Card 13: while the window is open the row carries the
+                          deadline — computed from the STORED sales_end on the
+                          server (sales_end_date), never the browser clock. */}
+                      {type.kind === "early_bird" && type.sales_end_date && (
+                        <p className="mt-1 text-xs text-neutral-400">
+                          Elővételes ár – {huUntil(type.sales_end_date)}
+                        </p>
+                      )}
                     </div>
                     {soldOut ? (
                       <span className="shrink-0 rounded-full bg-neutral-border/60 px-3 py-1.5 text-xs font-semibold text-neutral-300">
@@ -579,6 +588,11 @@ export default function BuyForm({
                           </span>
                         )}
                       </p>
+                      {type.kind === "early_bird" && type.sales_end_date && (
+                        <p className="mt-1 text-xs text-neutral-400">
+                          Elővételes ár – {huUntil(type.sales_end_date)}
+                        </p>
+                      )}
                     </div>
                     {soldOut ? (
                       <span className="shrink-0 rounded-full bg-neutral-border/60 px-3 py-1.5 text-xs font-semibold text-neutral-300">

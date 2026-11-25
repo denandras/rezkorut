@@ -101,7 +101,11 @@ export default async function JegyekPage({ params, searchParams }: PageProps) {
                   </p>
                 ) : !onSale ? (
                   <p className="text-sm text-neutral-300">
-                    Jelenleg nincs megvásárolható jegytípus.
+                    {/* Card 13: every active type's window ended → the sales
+                        closed for good, not a temporary „nothing to buy”. */}
+                    {ticketing.sales_closed
+                      ? "A jegyértékesítés erre a koncertre lezárult."
+                      : "Jelenleg nincs megvásárolható jegytípus."}
                   </p>
                 ) : (
                   <BuyForm concertId={concertId} types={ticketing.types} />

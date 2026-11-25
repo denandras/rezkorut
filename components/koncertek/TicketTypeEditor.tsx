@@ -3,7 +3,8 @@
 import { useState } from "react";
 
 import { IconClose } from "@/components/icons";
-import { formatHuf, type ApiTicketType, type TicketingInfo } from "./types";
+import { budapestDayOf, earlyBirdWindowSummary } from "@/components/hu-dates";
+import { formatHuf, todayIsoInBudapest, type ApiTicketType, type TicketingInfo } from "./types";
 
 /**
  * Ticket type editor of a concert. „Mentés” PUTs the full list to
@@ -12,8 +13,15 @@ import { formatHuf, type ApiTicketType, type TicketingInfo } from "./types";
  * rows missing from the payload are deactivated, never deleted.
  *
  * A blocked „Mentés” (empty list, missing name, a price that is neither 0 nor
- * at least 200 Ft, two early bird rows) is never a disabled button: it stays
+ * at least 200 Ft, two early bird rows, a sales window that ends before it
+ * starts or after the concert date) is never a disabled button: it stays
  * clickable and explains itself inline on the click.
+ *
+ * Card 13: an `early_bird` row carries two date inputs („Elővételes ár
+ * kezdete” / „Elővételes ár vége”); the days are stored by the server as the
+ * day's Europe/Budapest boundaries, and the row shows the window summary
+ * plus an informational note when the start day is already in the past (a
+ * past start is allowed — it makes the price effective immediately).
  */
 
 type Row = {
@@ -24,6 +32,11 @@ type Row = {
   capacity: string;
   kind: "standard" | "early_bird";
   active: boolean;
+  /**
+   * Card 13: the sales window as calendar days (`YYYY-MM-DD`,
+   * Europe/Budapest) — the stored timestamps converted back for the date
+   * inputs. null = unset (the window is open on that side).
+   */
   sales_start: string | null;
   sales_end: string | null;
 };
@@ -40,17 +53,20 @@ function rowFromType(type: ApiTicketType): Row {
     capacity: type.capacity === null ? "" : String(type.capacity),
     kind: type.kind,
     active: type.active,
-    sales_start: type.sales_start,
-    sales_end: type.sales_end,
+    sales_start: budapestDayOf(type.sales_start),
+    sales_end: budapestDayOf(type.sales_end),
   };
 }
 
 export default function TicketTypeEditor({
   concertId,
+  concertDateIso,
   ticketing,
   onSaved,
 }: {
   concertId: string;
+  /** Card 13: the concert's sortable date (`YYYY-MM-DD`), null when unknown. */
+  concertDateIso: string | null;
   ticketing: TicketingInfo | null;
   onSaved: () => void;
 }) {
@@ -105,6 +121,18 @@ export default function TicketTypeEditor({
           problems.push(`A ${nth} férőhelye 1 vagy nagyobb egész szám, vagy üresen hagyható.`);
         }
       }
+      // Card 13: the sales window rules, inline on the click — the server
+      // re-checks both. A start in the past is NOT an error (it only makes
+      // the price effective immediately — shown as an informational note on
+      // the row).
+      if (row.kind === "early_bird") {
+        if (row.sales_start && row.sales_end && row.sales_end < row.sales_start) {
+          problems.push("Az elővételes ár vége nem lehet korábbi, mint a kezdete.");
+        }
+        if (row.sales_end && concertDateIso && row.sales_end > concertDateIso) {
+          problems.push("Az elővételes ár vége nem lehet a koncert dátuma után.");
+        }
+      }
     });
     const earlyBirds = rows.filter((row) => row.kind === "early_bird");
     if (earlyBirds.length > 1) problems.push("Csak egy elővételes jegytípus lehet.");
@@ -127,8 +155,10 @@ export default function TicketTypeEditor({
           kind: row.kind,
           price_huf: Number(row.price.trim()),
           capacity: row.capacity.trim() === "" ? null : Number(row.capacity.trim()),
-          sales_start: row.sales_start,
-          sales_end: row.sales_end,
+          // Card 13: calendar days — the server stores them as the day's
+          // Europe/Budapest boundaries. A standard type submits null.
+          sales_start: row.kind === "early_bird" ? row.sales_start : null,
+          sales_end: row.kind === "early_bird" ? row.sales_end : null,
           active: row.active,
           sort: index,
         })),
@@ -239,7 +269,22 @@ export default function TicketTypeEditor({
                       <button
                         key={kind}
                         type="button"
-                        onClick={() => patchRow(index, { kind })}
+                        onClick={() =>
+                          patchRow(
+                            index,
+                            row.kind === kind
+                              ? {}
+                              : {
+                                  kind,
+                                  // Card 13: a standard type carries no sales
+                                  // window — switching back from early bird
+                                  // clears the dates (the server stores null).
+                                  ...(kind === "standard"
+                                    ? { sales_start: null, sales_end: null }
+                                    : {}),
+                                },
+                          )
+                        }
                         aria-pressed={row.kind === kind}
                         className={`rounded-[7px] px-3 py-1.5 text-xs font-semibold transition-colors ${
                           row.kind === kind
@@ -290,6 +335,56 @@ export default function TicketTypeEditor({
                     </button>
                   </div>
                 </div>
+
+                {/* Card 13: the early-bird sales window — calendar days; the
+                    server stores them as the day's Europe/Budapest
+                    boundaries, so the closing day itself stays purchasable
+                    to 23:59:59. Standard rows hide the fields entirely. */}
+                {row.kind === "early_bird" && (
+                  <div className="mt-3 rounded-lg border border-neutral-border/60 bg-neutral-dark/30 p-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={cellLabelClass} htmlFor={`type-start-${index}`}>
+                          Elővételes ár kezdete
+                        </label>
+                        <input
+                          id={`type-start-${index}`}
+                          type="date"
+                          value={row.sales_start ?? ""}
+                          onChange={(e) =>
+                            patchRow(index, { sales_start: e.target.value || null })
+                          }
+                          className={`${inputClass} [color-scheme:dark]`}
+                        />
+                      </div>
+                      <div>
+                        <label className={cellLabelClass} htmlFor={`type-end-${index}`}>
+                          Elővételes ár vége
+                        </label>
+                        <input
+                          id={`type-end-${index}`}
+                          type="date"
+                          value={row.sales_end ?? ""}
+                          onChange={(e) =>
+                            patchRow(index, { sales_end: e.target.value || null })
+                          }
+                          className={`${inputClass} [color-scheme:dark]`}
+                        />
+                      </div>
+                    </div>
+                    <p className="mt-2 text-[11px] text-neutral-400">
+                      Elővételes: {earlyBirdWindowSummary(row.sales_start, row.sales_end)}
+                      {row.sales_end
+                        ? " · a záró nap még teljes napig megvásárolható (23:59-ig)"
+                        : ""}
+                    </p>
+                    {row.sales_start !== null && row.sales_start < todayIsoInBudapest() && (
+                      <p className="mt-1 text-[11px] text-[#d9c58c]">
+                        A kezdődátum már elmúlt – az elővételes ár azonnal érvényes lesz.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

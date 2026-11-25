@@ -1,11 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { huDateToIso, listUpcomingConcerts } from "@/lib/concert-admin";
+import { budapestDayEndIso, budapestDayStartIso } from "@/lib/budapest-time";
 import {
   getConcert,
   getTicketDb,
   getTicketTypes,
   upsertConcert,
   upsertTicketTypes,
+  type ConcertUpsert,
   type TicketTypeUpsert,
 } from "@/lib/ticket-db";
 import {
@@ -31,6 +33,12 @@ export const runtime = "nodejs";
  * Card 11: a type with `price_huf = 0` is an ingyenes jegy — Stripe is never
  * touched for it (no product, no price; both columns stay null), and a
  * payload of only free types works without Stripe being configured at all.
+ *
+ * Card 13: `sales_start` / `sales_end` arrive as calendar days (`YYYY-MM-DD`)
+ * and only on the `early_bird` kind; standard types carry no window (forced
+ * null). The days are stored as their Europe/Budapest boundaries — start of
+ * day 00:00:00, end of day 23:59:59 — and the same rules the editor checks
+ * inline are enforced here: end ≥ start, end not after the concert date.
  */
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -57,6 +65,7 @@ type ValidatedType = {
   kind: "standard" | "early_bird";
   price_huf: number;
   capacity: number | null;
+  /** Card 13: calendar day (`YYYY-MM-DD`), null when the window is open-ended. */
   sales_start: string | null;
   sales_end: string | null;
   active: boolean;
@@ -64,6 +73,29 @@ type ValidatedType = {
 };
 
 const MAX_TYPES = 20;
+
+/**
+ * Card 13: one sales-window input as a real calendar day. The dashboard's
+ * date inputs only ever produce `YYYY-MM-DD` (or empty); anything else is
+ * refused instead of guessed at.
+ */
+function asSalesDay(value: unknown, unparseableMessage: string): { day: string | null } | { error: string } {
+  if (value === undefined || value === null || value === "") return { day: null };
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+    return { error: unparseableMessage };
+  }
+  const trimmed = value.trim();
+  const [year, month, day] = trimmed.split("-").map(Number);
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  if (
+    probe.getUTCFullYear() !== year ||
+    probe.getUTCMonth() !== month - 1 ||
+    probe.getUTCDate() !== day
+  ) {
+    return { error: unparseableMessage };
+  }
+  return { day: trimmed };
+}
 
 function validateTypes(raw: unknown): { types: ValidatedType[] } | { error: string } {
   if (!Array.isArray(raw) || raw.length === 0) {
@@ -116,22 +148,23 @@ function validateTypes(raw: unknown): { types: ValidatedType[] } | { error: stri
       capacity = body.capacity;
     }
 
+    // Card 13: the sales window belongs to the early-bird kind only — a
+    // standard type never carries one (forced null even if a payload sends
+    // dates). The days are validated here; their Budapest day-boundary
+    // conversion happens at storage time, the concert-date cross-check
+    // after the concert row is resolved.
     let salesStart: string | null = null;
     let salesEnd: string | null = null;
-    if (body.sales_start !== undefined && body.sales_start !== null && body.sales_start !== "") {
-      if (typeof body.sales_start !== "string" || Number.isNaN(Date.parse(body.sales_start))) {
-        return { error: "Értelmezhetetlen értékesítés-kezdet." };
+    if (kind === "early_bird") {
+      const start = asSalesDay(body.sales_start, "Értelmezhetetlen értékesítés-kezdet.");
+      if ("error" in start) return { error: start.error };
+      const end = asSalesDay(body.sales_end, "Értelmezhetetlen értékesítés-vég.");
+      if ("error" in end) return { error: end.error };
+      salesStart = start.day;
+      salesEnd = end.day;
+      if (salesStart && salesEnd && salesEnd < salesStart) {
+        return { error: "Az elővételes ár vége nem lehet korábbi, mint a kezdete." };
       }
-      salesStart = body.sales_start;
-    }
-    if (body.sales_end !== undefined && body.sales_end !== null && body.sales_end !== "") {
-      if (typeof body.sales_end !== "string" || Number.isNaN(Date.parse(body.sales_end))) {
-        return { error: "Értelmezhetetlen értékesítés-vég." };
-      }
-      salesEnd = body.sales_end;
-    }
-    if (salesStart && salesEnd && Date.parse(salesEnd) <= Date.parse(salesStart)) {
-      return { error: "Az értékesítés vége a kezdete után kell legyen." };
     }
 
     const active = body.active === undefined ? true : body.active;
@@ -224,8 +257,10 @@ export async function PUT(req: NextRequest, ctx: RouteContext) {
   try {
     // The rk_ticket_types FK requires the concert row. If the S3 line exists
     // but the mirror does not (id-less concert ticketed for the first time),
-    // create the mirror row here with status draft.
+    // the mirror row is created here with status draft — but only AFTER the
+    // card 13 window cross-check below, so a refused save writes nothing.
     let concert = await getConcert(concertId);
+    let mirrorToCreate: ConcertUpsert | null = null;
     if (!concert) {
       const s3Concerts = await listUpcomingConcerts();
       const s3Concert = s3Concerts.find((entry) => entry.id === concertId);
@@ -233,14 +268,44 @@ export async function PUT(req: NextRequest, ctx: RouteContext) {
         return NextResponse.json({ error: "Nincs ilyen koncert." }, { status: 404 });
       }
       const eventDate = huDateToIso(s3Concert.date);
-      concert = await upsertConcert({
+      mirrorToCreate = {
         concert_id: concertId,
         title: s3Concert.title,
         event_date: eventDate,
         event_time: s3Concert.time ?? null,
         location: s3Concert.location,
         venue: s3Concert.venue,
-      });
+      };
+      concert = {
+        concert_id: concertId,
+        title: s3Concert.title,
+        event_date: eventDate,
+        event_time: s3Concert.time ?? null,
+        location: s3Concert.location,
+        venue: s3Concert.venue,
+        status: "draft",
+        created_at: "",
+        updated_at: "",
+      };
+    }
+
+    // Card 13: the early-bird window may not reach past the concert date.
+    // The stored end is that day's 23:59:59 (Europe/Budapest), so the
+    // day-level comparison is the same instant check: end ≤ concert date
+    // keeps the whole closing day purchasable.
+    if (concert.event_date) {
+      for (const type of validated.types) {
+        if (type.sales_end && type.sales_end > concert.event_date) {
+          return NextResponse.json(
+            { error: "Az elővételes ár vége nem lehet a koncert dátuma után." },
+            { status: 400 },
+          );
+        }
+      }
+    }
+
+    if (mirrorToCreate) {
+      concert = await upsertConcert(mirrorToCreate);
     }
 
     const existing = await getTicketTypes(concertId);
@@ -292,8 +357,11 @@ export async function PUT(req: NextRequest, ctx: RouteContext) {
         kind: type.kind,
         price_huf: type.price_huf,
         capacity: type.capacity,
-        sales_start: type.sales_start,
-        sales_end: type.sales_end,
+        // Card 13: the calendar days become the day's Europe/Budapest
+        // boundaries — 00:00:00 start, 23:59:59 end — so „eddig: november
+        // 20.” keeps the whole closing day purchasable.
+        sales_start: type.sales_start ? budapestDayStartIso(type.sales_start) : null,
+        sales_end: type.sales_end ? budapestDayEndIso(type.sales_end) : null,
         active: type.active,
         sort: type.sort,
         stripe_price_id: stripeResult ? stripeResult.priceId : null,

@@ -18,6 +18,7 @@ import {
   type ApiOrder,
   type TacitoStatus,
 } from "./types";
+import { budapestDayOf, earlyBirdWindowSummary } from "@/components/hu-dates";
 
 /**
  * Client half of /intern/koncertek/[id]. The server page seeds the concert
@@ -269,6 +270,7 @@ export default function ConcertDetailScreen({
         <div className="mb-4">
           <TicketTypeEditor
             concertId={concertId}
+            concertDateIso={huDateToIso(concert.date)}
             ticketing={ticketing}
             onSaved={() => {
               reloadConcert();
@@ -376,6 +378,15 @@ export default function ConcertDetailScreen({
                         {type.sold}{type.capacity !== null ? ` / ${type.capacity}` : ""} db
                       </span>
                     </p>
+                    {type.kind === "early_bird" && (
+                      <p className="mb-1 text-[11px] text-neutral-400">
+                        Elővételes:{" "}
+                        {earlyBirdWindowSummary(
+                          budapestDayOf(type.sales_start),
+                          budapestDayOf(type.sales_end),
+                        )}
+                      </p>
+                    )}
                     <StatBar sold={type.sold} capacity={type.capacity} />
                   </div>
                 ))}

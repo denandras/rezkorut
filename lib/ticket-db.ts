@@ -452,8 +452,8 @@ export type TacitoStatusData = {
   } | null;
 };
 
-/** `YYYY-MM-DD` of an ISO timestamp in Europe/Budapest. */
-function budapestDateOf(iso: string): string {
+/** `YYYY-MM-DD` of an ISO timestamp in Europe/Budapest (card 13: the server-side read of the stored window). */
+export function budapestDateOf(iso: string): string {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Budapest" }).format(new Date(iso));
 }
 
