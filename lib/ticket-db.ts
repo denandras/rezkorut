@@ -86,6 +86,8 @@ export type RkTicket = {
   tacito_invoice_number: string | null;
   tacito_nav_outcome: string | null;
   tacito_error: string | null;
+  /** Number of the issued storno (cancellation) invoice — see migrations/20261125_rk_ticket_storno.sql. */
+  tacito_storno_number: string | null;
   emailed_at: string | null;
   created_at: string;
 };
@@ -313,34 +315,46 @@ export async function listTicketsForOrder(orderId: string): Promise<RkTicket[]> 
 }
 
 // ---------------------------------------------------------------------------
-// TACITo status tile (card 04 extends this with the live API probe)
+// TACITo status tile (the DB half of the card 04 health endpoint)
 // ---------------------------------------------------------------------------
 
 export type TacitoStatusData = {
   counts: {
     issued_total: number;
     pending_tickets: number;
-    error_tickets: number;
+    nav_error_tickets: number;
+    issued_today: number;
   };
-  last_errors: {
+  last_error: {
     ticket_id: string;
     ticket_code: string;
     message: string;
     occurred_at: string;
-  }[];
+  } | null;
 };
 
+/** `YYYY-MM-DD` of an ISO timestamp in Europe/Budapest. */
+function budapestDateOf(iso: string): string {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Budapest" }).format(new Date(iso));
+}
+
 /**
- * DB-side half of the TACITo health tile: how many tickets still need an
- * invoice (paid order, ticket not void, no invoice yet), how many have one,
- * how many carry an invoicing error, and the most recent errors.
+ * DB-side half of the TACITo health endpoint: how many tickets have an
+ * invoice, how many still need one (paid order, ticket not void, no invoice
+ * yet), how many carry a NAV error outcome, how many were invoiced today
+ * (Europe/Budapest), and the most recent `tacito_error`.
+ *
+ * `issued_today` uses the ticket row's `created_at` (the schema has no
+ * invoiced-at column; with the cron keeping up the two fall on the same day).
+ * `occurred_at` of `last_error` is that ticket's `created_at` for the same
+ * reason.
  */
 export async function getTacitoStatusData(): Promise<TacitoStatusData> {
   const client = db();
   const [ticketsRes, ordersRes] = await Promise.all([
     client
       .from("rk_tickets")
-      .select("id,code,status,tacito_invoice_id,tacito_error,created_at,order_id"),
+      .select("id,code,status,tacito_invoice_id,tacito_nav_outcome,tacito_error,created_at,order_id"),
     client.from("rk_orders").select("id,status"),
   ]);
   if (ticketsRes.error) throw fail("getTacitoStatusData (tickets)", ticketsRes.error);
@@ -351,6 +365,7 @@ export async function getTacitoStatusData(): Promise<TacitoStatusData> {
     code: string;
     status: string;
     tacito_invoice_id: string | null;
+    tacito_nav_outcome: string | null;
     tacito_error: string | null;
     created_at: string;
     order_id: string;
@@ -368,18 +383,24 @@ export async function getTacitoStatusData(): Promise<TacitoStatusData> {
   const errored = tickets
     .filter((ticket) => ticket.tacito_error)
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  const today = todayIsoInBudapest();
 
   return {
     counts: {
       issued_total: tickets.filter((ticket) => ticket.tacito_invoice_id).length,
       pending_tickets: pending.length,
-      error_tickets: errored.length,
+      nav_error_tickets: tickets.filter((ticket) => ticket.tacito_nav_outcome === "ERROR").length,
+      issued_today: tickets.filter(
+        (ticket) => ticket.tacito_invoice_id && budapestDateOf(ticket.created_at) === today,
+      ).length,
     },
-    last_errors: errored.slice(0, 5).map((ticket) => ({
-      ticket_id: ticket.id,
-      ticket_code: ticket.code,
-      message: ticket.tacito_error ?? "",
-      occurred_at: ticket.created_at,
-    })),
+    last_error: errored[0]
+      ? {
+          ticket_id: errored[0].id,
+          ticket_code: errored[0].code,
+          message: errored[0].tacito_error ?? "",
+          occurred_at: errored[0].created_at,
+        }
+      : null,
   };
 }
