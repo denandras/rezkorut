@@ -6,9 +6,9 @@
 // Requires node >= 22.18 (native TypeScript type-stripping) — same style as
 // card 01's scripts/concert-admin-check.mjs. The script drives the real API
 // with the intern cookie, reads the live S3 file back directly, reads
-// rk_ticket_types back through the service role key, and talks to Stripe only
-// to list the prices/products it created (creating a product/price is inert —
-// NO Checkout Session is ever created here).
+// rk_ticket_types back through the service role key, and talks to Stripe to
+// report and then clean up the prices/products it created (creating a
+// product/price is inert — NO Checkout Session is ever created here).
 //
 // Proofs (per the card):
 //   a) unauthenticated GET → 401
@@ -23,8 +23,14 @@
 //      stripe_price_id (rows printed, from the DB, not just the API response)
 //   f) publish → status on_sale
 //   g) DELETE → S3 line gone, DB row closed
-// Cleanup: the script itself removes the throwaway S3 line and the throwaway
-// DB rows; only the Stripe products/prices stay (ids printed for archiving).
+// Cleanup: the script itself removes the throwaway S3 line, the throwaway DB
+// rows, and — owner decision 2026-11-25 — the Stripe products it created
+// (stripe products.del). Prices cannot be deleted through the Stripe API, so
+// they are deactivated and their ids printed; if Stripe refuses to delete a
+// product that still has prices, the product is archived (active:false)
+// instead — either way everything ends inert. Nothing else in the account is
+// ever touched: leftovers are matched strictly by the throwaway product-name
+// prefix ("Réz körút – Teszt"), never broadly.
 // If STRIPE_SECRET_KEY is missing, sections e/f are SKIPPED with a clear
 // notice and the script exits 2 after cleanup.
 
@@ -622,18 +628,145 @@ await section("(g) DELETE throwaway → S3 line gone, DB row closed", async () =
 await cleanup();
 
 // ---------------------------------------------------------------------------
-// Stripe report (products/prices stay — the owner archives them)
+// Stripe cleanup + report (owner decision 2026-11-25: the throwaway products
+// are deleted via products.del; the Prices API cannot delete a price, so all
+// prices are deactivated, and if Stripe refuses deleting a priced product the
+// script archives it — everything ends inert, ids printed for the owner)
 // ---------------------------------------------------------------------------
 
-if (stripe && createdTypes.length) {
-  console.log("\n== Stripe prices/products created (archive these in the dashboard):");
-  for (const type of createdTypes) {
-    const price = await stripe.prices.retrieve(type.stripe_price_id);
-    const productId = typeof price.product === "string" ? price.product : price.product?.id;
+if (stripe) {
+  await section("(h) Stripe cleanup — throwaway products deleted/archived", async () => {
+    // What this run created (price ids come from section e's DB read-back).
+    const created = [];
+    for (const type of createdTypes) {
+      const price = await stripe.prices.retrieve(type.stripe_price_id);
+      const productId = typeof price.product === "string" ? price.product : price.product?.id;
+      created.push({ type: type.name, priceId: price.id, productId });
+      console.log(
+        `   created: "${type.name}" → price ${price.id} on product ${productId} (${price.unit_amount / 100} ${price.currency.toUpperCase()}, lookup_key ${price.lookup_key})`,
+      );
+    }
+    if (!created.length) {
+      console.log("   (this run created no Stripe objects — section e did not run)");
+    }
+
+    // Sweep for leftovers of earlier crashed runs, matched STRICTLY by the
+    // throwaway product-name prefix so the existing (yellowsky artwork)
+    // products are never touched.
+    const productIds = new Set(created.map((entry) => entry.productId).filter(Boolean));
+    for await (const product of stripe.products.list({ limit: 100 })) {
+      if (product.name?.startsWith("Réz körút – Teszt") && !productIds.has(product.id)) {
+        console.log(`   swept leftover product: ${product.id} (${product.name})`);
+        productIds.add(product.id);
+      }
+    }
+
+    // Deactivate every price of those products first (the Prices API cannot
+    // delete a price — archiving is the strongest operation available).
+    const priceIds = new Set(created.map((entry) => entry.priceId));
+    for (const productId of productIds) {
+      const prices = await stripe.prices.list({ product: productId, limit: 100 });
+      for (const price of prices.data) {
+        if (price.active) priceIds.add(price.id);
+      }
+    }
+    const deactivated = [];
+    for (const priceId of priceIds) {
+      await stripe.prices.update(priceId, { active: false });
+      deactivated.push(priceId);
+    }
     console.log(
-      `   type "${type.name}": price ${price.id} (product ${productId}, ${price.unit_amount} fillér = ${price.unit_amount / 100} Ft, ${price.currency}, active=${price.active}, lookup_key=${price.lookup_key})`,
+      `   prices deactivated (${deactivated.length} — the Stripe API cannot delete a price): ${deactivated.join(", ") || "none"}`,
     );
-  }
+
+    // Baseline: the non-throwaway active catalog must stay untouched.
+    const activeBefore = [];
+    for await (const product of stripe.products.list({ limit: 100, active: true })) {
+      if (!product.name?.startsWith("Réz körút – Teszt")) activeBefore.push(product);
+    }
+    const catalogBefore = activeBefore.map((product) => product.id).sort().join(",");
+
+    // Delete the throwaway products (owner instruction). Stripe refuses
+    // products.del while the product has prices — and prices cannot be
+    // deleted through the API at all — so on that specific refusal the
+    // product is archived (active:false) instead: inert, unsellable.
+    const deleted = [];
+    const archived = [];
+    for (const productId of productIds) {
+      try {
+        await stripe.products.del(productId);
+        deleted.push(productId);
+      } catch (err) {
+        const message = err && err.message ? String(err.message) : String(err);
+        if (!message.includes("user-created prices")) throw err;
+        await stripe.products.update(productId, { active: false });
+        archived.push(productId);
+      }
+    }
+    console.log(`   products deleted (${deleted.length}): ${deleted.join(", ") || "none"}`);
+    if (archived.length) {
+      console.log(
+        `   products ARCHIVED (${archived.length} — Stripe refuses products.del while prices exist): ${archived.join(", ")}`,
+      );
+      console.log(
+        "   to purge them for good: delete the never-used prices in the Dashboard, then the products (the API can do neither).",
+      );
+    }
+
+    // Verify: deleted products are really gone, archived ones read active:false.
+    for (const productId of deleted) {
+      let gone = false;
+      try {
+        const after = await stripe.products.retrieve(productId);
+        gone = Boolean(after?.deleted);
+      } catch {
+        gone = true; // a product that cannot even be retrieved is gone
+      }
+      assert.ok(gone, `product ${productId} must read back as deleted`);
+    }
+    if (deleted.length) console.log("   verified: every deleted product reads back { deleted: true }");
+
+    const throwawayLeft = [];
+    for await (const product of stripe.products.list({ limit: 100 })) {
+      if (product.name?.startsWith("Réz körút – Teszt")) throwawayLeft.push(product);
+    }
+    for (const product of throwawayLeft) {
+      assert.equal(
+        product.active,
+        false,
+        `throwaway product ${product.id} must be archived (active:false)`,
+      );
+    }
+    const activeAfter = [];
+    for await (const product of stripe.products.list({ limit: 100, active: true })) {
+      if (!product.name?.startsWith("Réz körút – Teszt")) activeAfter.push(product);
+    }
+    assert.equal(
+      activeAfter.map((product) => product.id).sort().join(","),
+      catalogBefore,
+      "the non-throwaway active catalog must be untouched",
+    );
+    console.log(
+      `   active catalog untouched: ${activeAfter.length} products (before: ${activeBefore.length}); throwaway left active: 0`,
+    );
+    for (const product of throwawayLeft) {
+      console.log(`     - archived: ${product.id} | ${product.name}`);
+    }
+    for (const product of activeAfter) {
+      console.log(`     - ${product.id} | ${product.name}`);
+    }
+
+    // Inert leftovers the API cannot delete: prices under rk: lookup keys.
+    const inertPrices = [];
+    for await (const price of stripe.prices.list({ limit: 100 })) {
+      if (price.lookup_key?.startsWith("rk:")) inertPrices.push(price);
+    }
+    const activeInert = inertPrices.filter((price) => price.active);
+    console.log(
+      `   inert rk: prices in the account: ${inertPrices.length} (ids: ${inertPrices.map((p) => p.id).join(", ") || "none"})`,
+    );
+    assert.equal(activeInert.length, 0, "every rk: price must be inactive");
+  });
   console.log("   (products/prices are inert — no Checkout Session was created, no money moved)");
 }
 

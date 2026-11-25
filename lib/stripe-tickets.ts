@@ -84,6 +84,28 @@ function metadataMatches(
   );
 }
 
+/**
+ * True when the product was deleted (retrieve answers `{deleted: true}`) or no
+ * longer exists at all — either way it can neither be updated nor carry a new
+ * price. An orphaned price like this is what a throwaway-concert cleanup
+ * leaves behind: the price keeps the lookup key while its product is gone.
+ */
+async function isProductDeleted(stripe: Stripe, productId: string): Promise<boolean> {
+  try {
+    const holder = await stripe.products.retrieve(productId);
+    return Boolean(holder.deleted);
+  } catch (err) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      (err as { type?: unknown }).type === "StripeInvalidRequestError"
+    ) {
+      return true;
+    }
+    throw err;
+  }
+}
+
 export type UpsertTypePriceResult = {
   productId: string;
   priceId: string;
@@ -121,6 +143,29 @@ export async function upsertTypePrice(input: {
     const productId = productIdOfPrice(current);
     if (!productId) {
       throw new Error(`[stripe-tickets] Price ${current.id} has no usable product reference`);
+    }
+
+    // Orphaned price: its product was deleted (throwaway cleanup) while the
+    // price kept holding the lookup key. A deleted product can neither be
+    // updated nor carry a replacement price, so create a fresh product and
+    // move the lookup key onto a new price instead.
+    if (await isProductDeleted(stripe, productId)) {
+      const fresh = await stripe.products.create({
+        name: productName(input.concertTitle, input.typeName),
+        metadata,
+      });
+      const replacement = await stripe.prices.create({
+        product: fresh.id,
+        unit_amount: unitAmount,
+        currency: "huf",
+        lookup_key: input.lookupKey,
+        transfer_lookup_key: true,
+        metadata,
+      });
+      if (current.active) {
+        await stripe.prices.update(current.id, { active: false });
+      }
+      return { productId: fresh.id, priceId: replacement.id, lookupKey: input.lookupKey };
     }
 
     const reusable =
