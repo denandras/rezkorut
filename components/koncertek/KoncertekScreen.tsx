@@ -19,7 +19,7 @@ import type { ApiConcert, ApiOrder, TacitoStatus } from "./types";
  * errors: orders are per-concert on the API, so the filter fetches the orders
  * of every concert that has any, and shows the errored ones in one list.
  */
-export default function KoncertekDashboard({
+export default function KoncertekScreen({
   initialConcerts,
   initialStatus,
 }: {

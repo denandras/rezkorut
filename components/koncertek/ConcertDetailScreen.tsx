@@ -105,14 +105,14 @@ export default function ConcertDetailScreen({
     }
     if (activeTypes.some((type) => type.price_huf < 200)) {
       setActionError(
-        explainPublishBlock("Van jegytípus, amelynek ára kevesebb 200 forintnál – növelje az árat."),
+        explainPublishBlock("Van jegytípus, amelynek ára kevesebb mint 200 forint – növelje az árat."),
       );
       return;
     }
     const iso = huDateToIso(concert?.date ?? "");
     if (!iso || iso < todayIsoInBudapest()) {
       setActionError(
-        explainPublishBlock("A koncert dátuma már elmúlt, az árusítás nem indítható."),
+        explainPublishBlock("A koncert dátuma már elmúlt, a jegyértékesítés nem indítható."),
       );
       return;
     }
@@ -123,15 +123,15 @@ export default function ConcertDetailScreen({
         const data = (await response.json().catch(() => null)) as { error?: string } | null;
         setActionPending(false);
         if (!response.ok) {
-          setActionError(data?.error ?? "Nem sikerült elindítani az árusítást.");
+          setActionError(data?.error ?? "Nem sikerült elindítani a jegyértékesítést.");
           return;
         }
-        setActionNotice("Az árusítás elindult.");
+        setActionNotice("A jegyértékesítés elindult.");
         reloadConcert();
       })
       .catch(() => {
         setActionPending(false);
-        setActionError("Nem sikerült elindítani az árusítást. Kérem, próbálja újra.");
+        setActionError("Nem sikerült elindítani a jegyértékesítést. Kérem, próbálja újra.");
       });
   }
 
@@ -145,15 +145,15 @@ export default function ConcertDetailScreen({
         const data = (await response.json().catch(() => null)) as { error?: string } | null;
         setActionPending(false);
         if (!response.ok) {
-          setActionError(data?.error ?? "Nem sikerült leállítani az árusítást.");
+          setActionError(data?.error ?? "Nem sikerült leállítani a jegyértékesítést.");
           return;
         }
-        setActionNotice("Az árusítás leállítva.");
+        setActionNotice("A jegyértékesítés leállítva.");
         reloadConcert();
       })
       .catch(() => {
         setActionPending(false);
-        setActionError("Nem sikerült leállítani az árusítást. Kérem, próbálja újra.");
+        setActionError("Nem sikerült leállítani a jegyértékesítést. Kérem, próbálja újra.");
       });
   }
 
@@ -266,9 +266,9 @@ export default function ConcertDetailScreen({
           />
         </div>
 
-        {/* Árusítás indítása / leállítása */}
+        {/* Jegyértékesítés indítása / leállítása */}
         <section className="mb-4 rounded-xl border border-neutral-border bg-neutral-dark/60 p-4">
-          <h3 className="font-display text-base font-bold text-neutral-100">Árusítás</h3>
+          <h3 className="font-display text-base font-bold text-neutral-100">Jegyértékesítés</h3>
           {onSale ? (
             <div className="mt-2">
               <button
@@ -278,7 +278,7 @@ export default function ConcertDetailScreen({
                   actionPending ? "opacity-50" : ""
                 }`}
               >
-                Árusítás leállítása
+                Jegyértékesítés leállítása
               </button>
               <p className="mt-2 text-xs text-neutral-500">
                 A leállítás után a jegyek nem vásárolhatók meg; a meglévő rendelések megmaradnak.
@@ -293,7 +293,7 @@ export default function ConcertDetailScreen({
                   actionPending ? "opacity-70" : ""
                 }`}
               >
-                {actionPending ? "Indítás…" : "Árusítás indítása"}
+                {actionPending ? "Indítás…" : "Jegyértékesítés indítása"}
               </button>
               <p className="mt-2 text-xs text-neutral-500">
                 Indításhoz kell legalább egy mentett, aktív jegytípus és nem múltbeli dátum.
@@ -356,7 +356,7 @@ export default function ConcertDetailScreen({
             {orders === null ? (
               <p className="text-sm text-neutral-400">A rendelések betöltése folyamatban…</p>
             ) : (
-              <OrdersTable orders={orders} onRefunded={reloadOrders} />
+              <OrdersTable orders={orders} onVisszateritve={reloadOrders} />
             )}
           </div>
         </section>

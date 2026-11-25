@@ -71,12 +71,12 @@ export function parseCheckoutRequest(raw: unknown): { request: CheckoutRequest }
   const concertId = body.concert_id.trim();
 
   if (!Array.isArray(body.items) || body.items.length === 0) {
-    return { error: "A kosár nem lehet üres." };
+    return { error: "Válasszon legalább egy jegyet." };
   }
   const items: CheckoutItem[] = [];
   let totalQuantity = 0;
   for (const entry of body.items) {
-    if (typeof entry !== "object" || entry === null) return { error: "Hibás kosár-tétel." };
+    if (typeof entry !== "object" || entry === null) return { error: "Hibás jegyválasztás." };
     const item = entry as Record<string, unknown>;
     if (typeof item.ticket_type_id !== "string" || item.ticket_type_id.trim().length === 0) {
       return { error: "Hiányzó jegytípus-azonosító." };
@@ -97,7 +97,7 @@ export function parseCheckoutRequest(raw: unknown): { request: CheckoutRequest }
     }
     totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
     if (totalQuantity > MAX_TOTAL_QUANTITY) {
-      return { error: `Kosáronként legfeljebb ${MAX_TOTAL_QUANTITY} jegy vásárolható.` };
+      return { error: `Egy vásárlásban legfeljebb ${MAX_TOTAL_QUANTITY} jegy vásárolható.` };
     }
   }
 
@@ -182,7 +182,7 @@ export async function createOrderAndCheckoutSession(
     throw new CheckoutError(404, "no_concert", "Nincs ilyen koncert.");
   }
   if (concert.status !== "on_sale") {
-    throw new CheckoutError(409, "not_on_sale", "A koncert jegyértékesítése nem folyamatban van.");
+    throw new CheckoutError(409, "not_on_sale", "A koncert jegyértékesítése jelenleg nincs folyamatban.");
   }
 
   const types = await getTicketTypes(request.concert_id);
@@ -199,16 +199,16 @@ export async function createOrderAndCheckoutSession(
       throw new CheckoutError(400, "type_inactive", "Ez a jegytípus már nem kapható.", type.name);
     }
     if (type.sales_start && now < Date.parse(type.sales_start)) {
-      throw new CheckoutError(400, "outside_sales_window", "Ennek a jegytípusnak az előértékesítése még nem kezdődött el.", type.name);
+      throw new CheckoutError(400, "outside_sales_window", "Az elővétel ennél a jegytípusnál még nem kezdődött el.", type.name);
     }
     if (type.sales_end && now > Date.parse(type.sales_end)) {
-      throw new CheckoutError(400, "outside_sales_window", "Ennek a jegytípusnak az előértékesítése már lejárt.", type.name);
+      throw new CheckoutError(400, "outside_sales_window", "Az elővétel ennél a jegytípusnál már lejárt.", type.name);
     }
     if (!type.stripe_price_id) {
       throw new CheckoutError(500, "price_missing", "A jegytípushoz nem tartozik Stripe-ár.", type.name);
     }
     if (type.capacity !== null && type.sold + item.quantity > type.capacity) {
-      throw new CheckoutError(409, "sold_out", "Ebből a jegytípusból már nincs több jegy.", type.name);
+      throw new CheckoutError(409, "sold_out", "Erre a jegytípusra már nincs jegy.", type.name);
     }
     resolved.push({ type, quantity: item.quantity });
   }

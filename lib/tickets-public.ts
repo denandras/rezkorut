@@ -1,4 +1,5 @@
 import { getTicketDb, type TicketKind } from "@/lib/ticket-db";
+import { isValidCode } from "@/lib/ticket-code";
 import type { Concert } from "@/lib/upcoming-concerts";
 
 /**
@@ -235,5 +236,104 @@ export async function getOrderBySessionId(
       price_huf: ticket.price_huf,
       status: ticket.status,
     })),
+  };
+}
+
+
+// ---------------------------------------------------------------------------
+// Ticket landing page (/j/<code> — the QR target, card 08)
+// ---------------------------------------------------------------------------
+
+export type PublicTicketByCode = {
+  /** Public facts of the concert — `concert_id` is public (the buy URL carries it). */
+  concert: {
+    concert_id: string;
+    title: string;
+    /** Event date, sortable ISO (`2026-11-27`). */
+    date: string | null;
+    /** Event time as stored (`19:00`). */
+    time: string | null;
+    venue: string | null;
+    location: string | null;
+    status: string;
+  } | null;
+  ticket: {
+    code: string;
+    type: string | null;
+    status: "valid" | "used" | "void";
+    used_at: string | null;
+  };
+};
+
+/**
+ * The /j/<code> page's data: one ticket by its code plus its concert's public
+ * facts. Deliberately minimal — no buyer name, e-mail or address is ever
+ * selected, so a random visitor (or a leaked link) learns nothing about the
+ * buyer. The code is normalized exactly like the door panel normalizes it
+ * (trim, uppercase, strip spaces and dashes). Null when the DB is not
+ * configured, the code is not shaped like a ticket code, or no ticket
+ * matches — the page renders the same calm "no ticket" state for all three.
+ */
+export async function getTicketByCode(code: string): Promise<PublicTicketByCode | null> {
+  const db = getTicketDb();
+  const normalized = code.trim().toUpperCase().replace(/[\s-]+/g, "");
+  if (!db || !isValidCode(normalized)) return null;
+
+  const { data: ticket, error } = await db
+    .from("rk_tickets")
+    .select("code,ticket_type_name,status,used_at,concert_id")
+    .eq("code", normalized)
+    .maybeSingle();
+  if (error) {
+    console.error("[tickets-public] ticket-by-code read failed:", error.message);
+    return null;
+  }
+  if (!ticket) return null;
+
+  const { data: concert, error: concertError } = await db
+    .from("rk_concerts")
+    .select("concert_id,title,event_date,event_time,venue,location,status")
+    .eq("concert_id", (ticket as { concert_id: string }).concert_id)
+    .maybeSingle();
+  if (concertError) {
+    console.error("[tickets-public] concert-for-ticket read failed:", concertError.message);
+    return null;
+  }
+
+  const row = ticket as {
+    code: string;
+    ticket_type_name: string | null;
+    status: "valid" | "used" | "void";
+    used_at: string | null;
+  };
+
+  const concertRow = (concert as {
+    concert_id: string;
+    title: string;
+    event_date: string | null;
+    event_time: string | null;
+    venue: string | null;
+    location: string | null;
+    status: string;
+  } | null) ?? null;
+
+  return {
+    concert: concertRow
+      ? {
+          concert_id: concertRow.concert_id,
+          title: concertRow.title,
+          date: concertRow.event_date,
+          time: concertRow.event_time,
+          venue: concertRow.venue,
+          location: concertRow.location,
+          status: concertRow.status,
+        }
+      : null,
+    ticket: {
+      code: row.code,
+      type: row.ticket_type_name,
+      status: row.status,
+      used_at: row.used_at,
+    },
   };
 }

@@ -97,7 +97,7 @@ export default async function JegyekPage({ params, searchParams }: PageProps) {
               <section className="mt-8">
                 {!ticketing || !ticketing.on_sale ? (
                   <p className="text-sm text-neutral-300">
-                    A koncert jegyértékesítése jelenleg nem folyamatban van.
+                    A koncert jegyértékesítése jelenleg nincs folyamatban.
                   </p>
                 ) : !onSale ? (
                   <p className="text-sm text-neutral-300">

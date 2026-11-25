@@ -1,6 +1,6 @@
 import type { TicketingInfo } from "./types";
 
-/** The four dashboard states a concert's ticketing can be shown in. */
+/** The four states a concert's ticketing can be shown in. */
 export type PillState = "none" | "on_sale" | "sold_out" | "closed";
 
 /** Maps a ticketing status (or its absence) onto the four pill states. */
@@ -18,7 +18,7 @@ const PILL_CLASS: Record<PillState, string> = {
 
 const PILL_LABEL: Record<PillState, string> = {
   none: "Nincs jegyértékesítés",
-  on_sale: "Árusítás",
+  on_sale: "Értékesítés alatt",
   sold_out: "Elfogyott",
   closed: "Lezárva",
 };

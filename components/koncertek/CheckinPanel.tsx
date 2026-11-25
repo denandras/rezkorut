@@ -7,12 +7,16 @@ import { formatTimestampHu, type CheckinResponse } from "./types";
 /**
  * Door check-in panel. The code input is big, auto-uppercases and strips
  * spaces and dashes; submit POSTs /api/intern/checkin and the result panel
- * shows the five outcomes. Camera scanning uses BarcodeDetector when the
- * browser has it (behind a „Kamera” button) — no barcode library, plain text
- * input is always available. The live counter shows used / total sold.
+ * shows the five outcomes. The „Kamera” button has two decoders: the native
+ * BarcodeDetector where the browser has it (Chrome, Android), and a jsQR
+ * fallback for Safari/iOS — dynamically imported only when the fallback
+ * runs, decoding video frames on a canvas ~8 times a second. The stream is
+ * stopped on unmount and after a successful read; a denied camera permission
+ * (or a missing decoder) leaves the manual code input fully usable with one
+ * calm note, never a scary error. The live counter shows used / total sold.
  */
 
-type ScanState =
+type ReadState =
   | { kind: "none" }
   | { kind: "valid"; type: string; code: string; buyer: string | null }
   | { kind: "used"; time: string | null; code: string }
@@ -27,7 +31,7 @@ type BarcodeDetectorLike = {
   detect: (source: CanvasImageSource) => Promise<{ rawValue: string }[]>;
 };
 
-const RESULT_CLASS: Record<ScanState["kind"], string> = {
+const RESULT_CLASS: Record<ReadState["kind"], string> = {
   none: "",
   valid: "border-[#86e3a0]/50 bg-[#86e3a0]/10 text-[#86e3a0]",
   used: "border-[#e6be5f]/50 bg-[#e6be5f]/10 text-[#e6be5f]",
@@ -48,14 +52,14 @@ export default function CheckinPanel({
   initialCounts: { used: number; sold: number };
 }) {
   const [code, setCode] = useState("");
-  const [scan, setScan] = useState<ScanState>({ kind: "none" });
+  const [read, setRead] = useState<ReadState>({ kind: "none" });
   const [counts, setCounts] = useState(initialCounts);
   const [submitting, setSubmitting] = useState(false);
   const [camera, setCamera] = useState<CameraState>("off");
   const [cameraNote, setCameraNote] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const detectorTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const codeRef = useRef("");
   const submittingRef = useRef(false);
 
@@ -67,9 +71,9 @@ export default function CheckinPanel({
   }, [submitting]);
 
   function stopCamera() {
-    if (detectorTimer.current) {
-      clearInterval(detectorTimer.current);
-      detectorTimer.current = null;
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
@@ -91,13 +95,13 @@ export default function CheckinPanel({
         const data = (await response.json().catch(() => null)) as CheckinResponse | null;
         setSubmitting(false);
         if (!response.ok || !data) {
-          setScan({ kind: "unknown", code: normalized });
+          setRead({ kind: "unknown", code: normalized });
           return;
         }
         if (data.counts) setCounts(data.counts);
         switch (data.result) {
           case "valid":
-            setScan({
+            setRead({
               kind: "valid",
               type: data.ticket?.ticket_type_name ?? "jegy",
               code: data.ticket?.code ?? normalized,
@@ -105,67 +109,128 @@ export default function CheckinPanel({
             });
             break;
           case "used":
-            setScan({
+            setRead({
               kind: "used",
               time: data.ticket?.used_at ?? null,
               code: data.ticket?.code ?? normalized,
             });
             break;
           case "void":
-            setScan({ kind: "void", code: data.ticket?.code ?? normalized });
+            setRead({ kind: "void", code: data.ticket?.code ?? normalized });
             break;
           case "wrong_concert":
-            setScan({ kind: "wrong_concert", code: data.ticket?.code ?? normalized });
+            setRead({ kind: "wrong_concert", code: data.ticket?.code ?? normalized });
             break;
           case "unknown":
           default:
-            setScan({ kind: "unknown", code: normalized });
+            setRead({ kind: "unknown", code: normalized });
             break;
         }
+        // A code was read and answered — stop the stream so the same QR is
+        // not submitted again (the next visitor starts with a fresh camera).
+        stopCamera();
       })
       .catch(() => {
         setSubmitting(false);
-        setScan({ kind: "unknown", code: normalized });
+        setRead({ kind: "unknown", code: normalized });
       });
     setCode("");
   }
 
+  /**
+   * „Kamera” — starts the stream, then one of the two decoders. The video
+   * element is always mounted (hidden while off), so the stream can attach
+   * immediately after the permission is granted.
+   */
   async function startCamera() {
-    const Ctor = (window as unknown as { BarcodeDetector?: new () => BarcodeDetectorLike })
-      .BarcodeDetector;
-    if (!Ctor) {
-      setCameraNote("Ez a böngésző nem támogatja a kamerás beolvasást – gépelje be a kódot.");
-      return;
-    }
+    if (camera === "starting" || camera === "on") return;
     setCamera("starting");
     setCameraNote(null);
+
+    let stream: MediaStream;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
         audio: false,
       });
-      streamRef.current = stream;
-      const video = videoRef.current;
-      if (!video) return;
-      video.srcObject = stream;
-      await video.play();
-      setCamera("on");
-
-      const detector = new Ctor();
-      detectorTimer.current = setInterval(async () => {
-        try {
-          if (!videoRef.current || codeRef.current.length > 0 || submittingRef.current) return;
-          const hits = await detector.detect(videoRef.current);
-          const value = hits.find((hit) => hit.rawValue)?.rawValue;
-          if (value) submitCode(value);
-        } catch {
-          /* a single failed frame is fine, the interval tries again */
-        }
-      }, 400);
     } catch {
-      setCamera("off");
+      // Permission denied (or no camera): the manual code input stays
+      // fully usable — one calm note, no scary error.
+      setCamera("denied");
       setCameraNote("Nem sikerült elérni a kamerát – gépelje be a kódot.");
+      return;
     }
+    streamRef.current = stream;
+    const video = videoRef.current;
+    if (!video) {
+      stream.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      setCamera("off");
+      return;
+    }
+    video.srcObject = stream;
+    try {
+      await video.play();
+    } catch {
+      /* muted autoplay is always allowed; keep going even if it fails */
+    }
+
+    // Decoder: native BarcodeDetector, or jsQR as the fallback (Safari/iOS
+    // has no BarcodeDetector) — imported only now, never on the main path.
+    const Ctor = (window as unknown as { BarcodeDetector?: new () => BarcodeDetectorLike })
+      .BarcodeDetector;
+    let decodeFrame: (video: HTMLVideoElement) => Promise<string | null>;
+    let intervalMs: number;
+    if (Ctor) {
+      const detector = new Ctor();
+      decodeFrame = async (source) => {
+        const hits = await detector.detect(source);
+        return hits.find((hit) => hit.rawValue)?.rawValue ?? null;
+      };
+      intervalMs = 400;
+    } else {
+      let jsQR: typeof import("jsqr")["default"];
+      try {
+        ({ default: jsQR } = await import("jsqr"));
+      } catch {
+        stopCamera();
+        setCameraNote("Ez a böngésző nem támogatja a kamerás beolvasást – gépelja be a kódot.");
+        return;
+      }
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) {
+        stopCamera();
+        setCameraNote("Ez a böngésző nem támogatja a kamerás beolvasást – gépelja be a kódot.");
+        return;
+      }
+      // Decode at a capped size: plenty for a QR code, cheap enough to keep
+      // ~8 fps even on a phone.
+      const MAX_SIDE = 480;
+      decodeFrame = async (source) => {
+        const width = source.videoWidth;
+        const height = source.videoHeight;
+        if (!width || !height) return null;
+        const scale = Math.min(1, MAX_SIDE / Math.max(width, height));
+        canvas.width = Math.round(width * scale);
+        canvas.height = Math.round(height * scale);
+        context.drawImage(source, 0, 0, canvas.width, canvas.height);
+        const image = context.getImageData(0, 0, canvas.width, canvas.height);
+        return jsQR(image.data, canvas.width, canvas.height)?.data ?? null;
+      };
+      intervalMs = 125;
+    }
+
+    setCamera("on");
+    timerRef.current = setInterval(async () => {
+      try {
+        if (!videoRef.current || codeRef.current.length > 0 || submittingRef.current) return;
+        const value = await decodeFrame(videoRef.current);
+        if (value) submitCode(value);
+      } catch {
+        /* a single failed frame is fine, the interval tries again */
+      }
+    }, intervalMs);
   }
 
   return (
@@ -234,47 +299,47 @@ export default function CheckinPanel({
           )}
         </div>
         {cameraNote && <p className="mt-2 text-xs text-neutral-400">{cameraNote}</p>}
-        {camera === "on" && (
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            className="mt-3 aspect-video w-full rounded-lg border border-neutral-border bg-charcoal"
-          />
-        )}
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          className={`mt-3 aspect-video w-full rounded-lg border border-neutral-border bg-charcoal ${
+            camera === "on" ? "" : "hidden"
+          }`}
+        />
       </form>
 
       {/* Eredmény */}
-      {scan.kind !== "none" && (
+      {read.kind !== "none" && (
         <div
           role="status"
-          className={`rounded-xl border p-5 ${RESULT_CLASS[scan.kind]}`}
+          className={`rounded-xl border p-5 ${RESULT_CLASS[read.kind]}`}
         >
-          {scan.kind === "valid" && (
+          {read.kind === "valid" && (
             <>
               <p className="text-lg font-bold">
-                Érvényes jegy – {scan.type}, {scan.code}
+                Érvényes jegy – {read.type}, {read.code}
               </p>
-              {scan.buyer && <p className="mt-1 text-sm opacity-90">{scan.buyer}</p>}
+              {read.buyer && <p className="mt-1 text-sm opacity-90">{read.buyer}</p>}
             </>
           )}
-          {scan.kind === "used" && (
+          {read.kind === "used" && (
             <p className="text-lg font-bold">
-              Már beolvasva{scan.time ? `: ${formatTimestampHu(scan.time)}` : ""}
-              {scan.code ? ` – ${scan.code}` : ""}
+              Már beolvasva{read.time ? `: ${formatTimestampHu(read.time)}` : ""}
+              {read.code ? ` – ${read.code}` : ""}
             </p>
           )}
-          {scan.kind === "void" && (
+          {read.kind === "void" && (
             <p className="text-lg font-bold">
-              Visszaváltott jegy{scan.code ? ` – ${scan.code}` : ""}
+              Visszaváltott jegy{read.code ? ` – ${read.code}` : ""}
             </p>
           )}
-          {scan.kind === "wrong_concert" && (
+          {read.kind === "wrong_concert" && (
             <p className="text-lg font-bold">
-              Másik koncertre szól{scan.code ? ` – ${scan.code}` : ""}
+              Másik koncertre szól{read.code ? ` – ${read.code}` : ""}
             </p>
           )}
-          {scan.kind === "unknown" && (
+          {read.kind === "unknown" && (
             <p className="text-lg font-bold">Ismeretlen kód</p>
           )}
         </div>

@@ -107,7 +107,7 @@ export default function TicketTypeEditor({
       }
     });
     const earlyBirds = rows.filter((row) => row.kind === "early_bird");
-    if (earlyBirds.length > 1) problems.push("Csak egy early bird jegytípus lehet.");
+    if (earlyBirds.length > 1) problems.push("Csak egy elővételes jegytípus lehet.");
     if (problems.length > 0) {
       setErrors(problems);
       return;
@@ -169,7 +169,7 @@ export default function TicketTypeEditor({
 
       {rows.length === 0 ? (
         <p className="mt-3 text-sm text-neutral-400">
-          Még nincs jegytípus – adjon hozzá egyet az árusítás indításához.
+          Még nincs jegytípus – adjon hozzá egyet a jegyértékesítés indításához.
         </p>
       ) : (
         <div className="mt-3 flex flex-col gap-3">
@@ -191,7 +191,7 @@ export default function TicketTypeEditor({
                       value={row.name}
                       onChange={(e) => patchRow(index, { name: e.target.value })}
                       maxLength={60}
-                      placeholder="Teljes ár"
+                      placeholder="Teljes árú jegy"
                       className={inputClass}
                     />
                   </div>
@@ -244,7 +244,7 @@ export default function TicketTypeEditor({
                             : "text-neutral-300 hover:text-primary"
                         }`}
                       >
-                        {kind === "standard" ? "Teljes ár" : "Early bird"}
+                        {kind === "standard" ? "Teljes árú jegy" : "Elővételes jegy"}
                       </button>
                     ))}
                   </div>

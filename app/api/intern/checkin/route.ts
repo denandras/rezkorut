@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
         code: ticket.code,
         ticket_type_name: ticket.ticket_type_name,
         buyer_name: (order as { buyer_name: string | null } | null)?.buyer_name ?? null,
-        used_at: null,
+        used_at: updated.used_at,
       },
       counts: await doorCounts(client, concertId),
     });

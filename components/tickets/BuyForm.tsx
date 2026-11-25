@@ -182,7 +182,7 @@ export default function BuyForm({
           Jegyek
         </h3>
         <p className="mt-1 text-xs text-neutral-400">
-          KOSÁRONKÉNT LEGFELJEBB 6 JEGY, JEGYTÍPUSONKÉNT LEGFELJEBB 4.
+          EGY VÁSÁRLÁSBAN LEGFELJEBB 6 JEGY, JEGYTÍPUSONKÉNT LEGFELJEBB 4.
         </p>
         <div className="mt-3 space-y-3">
           {types.map((type) => {

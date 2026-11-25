@@ -59,17 +59,17 @@ function invoiceState(tickets: ApiTicket[]): { text: string; tone: "ok" | "warn"
   return { text: "Számlázásra vár", tone: "warn" };
 }
 
-type RefundState =
+type VisszateritesState =
   | { step: "idle" }
   | { step: "confirm" }
   | { step: "done"; note: string }
   | { step: "error"; message: string };
 
-function RefundControl({ order, onRefunded }: { order: ApiOrder; onRefunded: () => void }) {
-  const [state, setState] = useState<RefundState>({ step: "idle" });
+function VisszateritesControl({ order, onVisszateritve }: { order: ApiOrder; onVisszateritve: () => void }) {
+  const [state, setState] = useState<VisszateritesState>({ step: "idle" });
   const [submitting, setSubmitting] = useState(false);
 
-  function refund(reason: "cancelled" | "moved") {
+  function visszaterit(reason: "cancelled" | "moved") {
     if (submitting) return;
     setSubmitting(true);
     fetch(`/api/intern/orders/${order.id}/refund`, {
@@ -87,7 +87,7 @@ function RefundControl({ order, onRefunded }: { order: ApiOrder; onRefunded: () 
           return;
         }
         setState({ step: "done", note: data.note ?? "A rendelés visszatérítésre került." });
-        onRefunded();
+        onVisszateritve();
       })
       .catch(() => {
         setSubmitting(false);
@@ -109,7 +109,7 @@ function RefundControl({ order, onRefunded }: { order: ApiOrder; onRefunded: () 
         <div className="mt-2 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => refund("cancelled")}
+            onClick={() => visszaterit("cancelled")}
             className={`rounded-lg border border-neutral-border bg-neutral-dark px-3 py-2 text-xs font-semibold text-neutral-100 transition-colors hover:border-[#ed9a91]/50 hover:text-[#ed9a91] ${
               submitting ? "opacity-50" : ""
             }`}
@@ -118,7 +118,7 @@ function RefundControl({ order, onRefunded }: { order: ApiOrder; onRefunded: () 
           </button>
           <button
             type="button"
-            onClick={() => refund("moved")}
+            onClick={() => visszaterit("moved")}
             className={`rounded-lg border border-neutral-border bg-neutral-dark px-3 py-2 text-xs font-semibold text-neutral-100 transition-colors hover:border-[#ed9a91]/50 hover:text-[#ed9a91] ${
               submitting ? "opacity-50" : ""
             }`}
@@ -162,11 +162,11 @@ const orderStatusWord: Record<ApiOrder["status"], string> = {
 export default function OrdersTable({
   orders,
   navErrorOnly = false,
-  onRefunded,
+  onVisszateritve,
 }: {
   orders: ApiOrder[];
   navErrorOnly?: boolean;
-  onRefunded?: () => void;
+  onVisszateritve?: () => void;
 }) {
   const visible = navErrorOnly ? orders.filter(orderHasNavError) : orders;
 
@@ -222,7 +222,7 @@ export default function OrdersTable({
 
             {order.status === "paid" && (
               <div className="mt-3">
-                <RefundControl order={order} onRefunded={() => onRefunded?.()} />
+                <VisszateritesControl order={order} onVisszateritve={() => onVisszateritve?.()} />
               </div>
             )}
           </article>

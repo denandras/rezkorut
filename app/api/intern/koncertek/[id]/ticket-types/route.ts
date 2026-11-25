@@ -85,7 +85,7 @@ function validateTypes(raw: unknown): { types: ValidatedType[] } | { error: stri
 
     const kind = body.kind === undefined ? "standard" : body.kind;
     if (kind !== "standard" && kind !== "early_bird") {
-      return { error: "A jegytípus fajtája csak standard vagy early_bird lehet." };
+      return { error: "A jegytípus fajtája csak teljes árú vagy elővételes lehet." };
     }
 
     const priceHuf = body.price_huf;
@@ -156,7 +156,7 @@ function validateTypes(raw: unknown): { types: ValidatedType[] } | { error: stri
 
   const earlyBirds = out.filter((type) => type.kind === "early_bird");
   if (earlyBirds.length > 1) {
-    return { error: "Csak egy early bird jegytípus lehet." };
+    return { error: "Csak egy elővételes jegytípus lehet." };
   }
 
   return { types: out };

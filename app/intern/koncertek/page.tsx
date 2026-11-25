@@ -1,5 +1,5 @@
 import InternGate from "@/components/intern-gate";
-import KoncertekDashboard from "@/components/koncertek/KoncertekDashboard";
+import KoncertekScreen from "@/components/koncertek/KoncertekScreen";
 import type { ApiConcert, TacitoStatus } from "@/components/koncertek/types";
 import { fetchInternApi, hasInternCookie } from "@/lib/intern-ssr";
 
@@ -25,7 +25,7 @@ export default async function KoncertekPage() {
   ]);
 
   return (
-    <KoncertekDashboard
+    <KoncertekScreen
       initialConcerts={list?.concerts ?? null}
       initialStatus={status}
     />
