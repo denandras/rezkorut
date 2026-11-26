@@ -24,7 +24,7 @@ export interface PeopleGateProps {
   onRemove: (id: string) => void;
   onToggleVisible: (id: string, visible: boolean) => void;
   onRename: (id: string, name: string) => void;
-  progress: (personId: string) => { answered: number; total: number };
+  progress: (personId: string) => { answered: number; total: number; lifetime: number };
 }
 
 export default function PeopleGate({
@@ -77,7 +77,7 @@ export default function PeopleGate({
       <ul className="flex flex-col gap-1.5">
         {ordered.map((p) => {
           const sel = p.id === selectedId;
-          const { answered, total } = progress(p.id);
+          const { answered, total, lifetime } = progress(p.id);
           const confirming = confirmId === p.id;
           const editing = editingId === p.id;
 
@@ -143,8 +143,11 @@ export default function PeopleGate({
                     >
                       {p.name}
                     </span>
-                    <span className="shrink-0 text-[11.5px] tabular-nums text-ink-faint">
-                      {answered}/{total}
+                    <span
+                      className="shrink-0 text-[11.5px] tabular-nums text-ink-faint"
+                      title={`${answered}/${total} megjelölve ebben a hónapban · ${lifetime} megjelölés mára és a jövőre`}
+                    >
+                      {answered}/{total} · {lifetime}
                     </span>
                   </button>
 

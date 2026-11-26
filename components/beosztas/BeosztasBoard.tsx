@@ -201,7 +201,13 @@ export default function BeosztasBoard({
     ? toISODate(monthDates(year, month)[0])
     : selectedDayState;
 
-  /** marks answered / markable in the shown month, per person — picker badge. */
+  /**
+   * Picker badge, per person: answered/total for the shown month (the ratio you
+   * can act on) plus a lifetime count that starts today — marks on today and any
+   * future day, so it measures how many answers still lie ahead, not the history
+   * (owner: "a mix, lifetime after today").
+   */
+  const todayIso = useMemo(() => iso(new Date()), []);
   const personProgress = useCallback(
     (personId: string) => {
       const total = monthDayCount * d.slots.length;
@@ -212,9 +218,18 @@ export default function BeosztasBoard({
           if (d.marks.get(markKey(personId, day, s.id))) answered++;
         }
       }
-      return { answered, total };
+      const slotIds = new Set(d.slots.map((s) => String(s.id)));
+      let lifetime = 0;
+      for (const key of d.marks.keys()) {
+        const [owner, day, slotId] = key.split("|");
+        if (owner !== personId) continue;
+        if (!day || day < todayIso) continue;
+        if (!slotIds.has(slotId)) continue;
+        lifetime++;
+      }
+      return { answered, total, lifetime };
     },
-    [d.marks, year, month, monthDayCount]
+    [d.marks, year, month, monthDayCount, todayIso]
   );
 
   if (showPeople) {
