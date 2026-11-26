@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import BottomNav from "@/components/bottom-nav";
 import ConcertCard from "@/components/concert-card";
 import { getUpcomingConcerts, getArchivedConcerts } from "@/lib/upcoming-concerts";
+import { withTicketUrls } from "@/lib/tickets-public";
 
 export const metadata: Metadata = {
   title: "Események – Réz körút",
@@ -26,7 +27,11 @@ export default async function EsemenyekPage() {
     getArchivedConcerts(),
   ]);
   // null = fetch error → hide section; [] = fetched but empty → hide section
-  const displayedUpcoming = upcomingConcerts && upcomingConcerts.length > 0 ? upcomingConcerts : null;
+  // Ticket CTA: the on-sale annotation decides per concert (fail-closed in the lib).
+  const displayedUpcoming =
+    upcomingConcerts && upcomingConcerts.length > 0
+      ? await withTicketUrls(upcomingConcerts)
+      : null;
   const displayedArchived = archivedConcerts && archivedConcerts.length > 0 ? archivedConcerts : null;
   return (
     <div className="flex min-h-screen flex-col bg-background-dark text-neutral-100">

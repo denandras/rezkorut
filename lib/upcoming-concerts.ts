@@ -2,6 +2,18 @@ import { GetObjectCommand, ListObjectsV2Command, S3Client } from "@aws-sdk/clien
 import { getS4Config, getS4UpcomingPrefix } from "@/lib/s4-config";
 
 export type Concert = {
+  /**
+   * Stable identifier (`rk-<YYYY-MM-DD>-<slug>`), stored as the optional 9th
+   * pipe field (`id:rk-...`). Legacy lines may not have one yet.
+   */
+  id?: string;
+  /**
+   * `/jegyek/<id>` — set by `withTicketUrls` (lib/tickets-public) for concerts
+   * whose ticketing is `on_sale`. Server pages annotate the S3 concerts with
+   * it before rendering; it is never stored in the file. Drives the
+   * „Jegyvásárlás” CTA on the concert card.
+   */
+  ticketUrl?: string;
   date: string;
   time?: string;
   location: string;
@@ -17,6 +29,9 @@ function isLikelyHref(value: string | undefined): boolean {
   return /^(https?:\/\/|mailto:|tel:|\/)/i.test(value.trim());
 }
 
+/** Shape of the optional trailing id field: `id:rk-2026-11-27-bmc-konyvtar`. */
+const CONCERT_ID_FIELD = /^id:(rk-[a-z0-9-]+)$/;
+
 function ensureTrailingSlash(prefix: string) {
   return prefix.endsWith("/") ? prefix : `${prefix}/`;
 }
@@ -25,12 +40,14 @@ function ensureTrailingSlash(prefix: string) {
  * Parses the rezkorut upcoming concerts markdown format.
  *
  * Each concert is a bullet line with pipe-separated fields:
- *   - date | time | location | venue | title | program (semicolon-separated) | href | href_label
+ *   - date | time | location | venue | title | program (semicolon-separated) | href | href_label | id:rk-...
  *
- * `time`, `program`, `href`, and `href_label` are optional.
- * If no program field is present, the field after title may be an href directly.
+ * `time`, `program`, `href`, `href_label` and the trailing `id:rk-...` field are
+ * optional. The id field may appear anywhere after the title; it is never
+ * mistaken for a program or an href. If no program field is present, the field
+ * after title may be an href directly.
  */
-function parseUpcomingConcertsMarkdown(raw: string): Concert[] {
+export function parseUpcomingConcertsMarkdown(raw: string): Concert[] {
   const lines = raw
     .split(/\r?\n/)
     .map((l) => l.trim())
@@ -41,7 +58,21 @@ function parseUpcomingConcertsMarkdown(raw: string): Concert[] {
     .map((line) => line.split("|").map((p) => p.trim()))
     .filter((parts) => parts.length >= 5)
     .map((parts) => {
-      const [date, time, location, venue, title, ...rest] = parts;
+      const [date, time, location, venue, title, ...restWithIds] = parts;
+
+      // Pull out the optional id field(s) first so the remaining logic below
+      // (program / href detection) can never mistake `id:rk-...` for either.
+      // If more than one id field is present, the last one wins.
+      let id: string | undefined;
+      const rest: string[] = [];
+      for (const part of restWithIds) {
+        const idMatch = CONCERT_ID_FIELD.exec(part);
+        if (idMatch) {
+          id = idMatch[1];
+        } else {
+          rest.push(part);
+        }
+      }
 
       // rest: [program?, href?, href_label?]
       // href can appear at rest[0] if there is no program field
@@ -63,7 +94,7 @@ function parseUpcomingConcertsMarkdown(raw: string): Concert[] {
               .filter(Boolean)
           : undefined;
 
-      return {
+      const concert: Concert = {
         date: date ?? "",
         time: time || undefined,
         location: location ?? "",
@@ -72,7 +103,40 @@ function parseUpcomingConcertsMarkdown(raw: string): Concert[] {
         program: program && program.length > 0 ? program : undefined,
         link: href ? { href, label: hrefLabel || "Jegyinfo" } : undefined,
       };
+      if (id) concert.id = id;
+      return concert;
     });
+}
+
+/**
+ * Serializes a concert back into the canonical bullet line:
+ *   `- date | time | location | venue | title | program | href | label | id:rk-...`
+ *
+ * The five positional fields are always emitted (missing `time` becomes an
+ * empty slot, exactly like the `venue` slot in the live file); `program`,
+ * `href`+`label` and the id field are appended only when present. For any
+ * concert produced by `parseUpcomingConcertsMarkdown`,
+ * `parseUpcomingConcertsMarkdown(serializeConcert(c))` yields an equal concert.
+ */
+export function serializeConcert(concert: Concert): string {
+  const parts: string[] = [
+    concert.date,
+    concert.time ?? "",
+    concert.location,
+    concert.venue,
+    concert.title,
+  ];
+  if (concert.program && concert.program.length > 0) {
+    parts.push(concert.program.join("; "));
+  }
+  if (concert.link) {
+    parts.push(concert.link.href);
+    parts.push(concert.link.label || "Jegyinfo");
+  }
+  if (concert.id) {
+    parts.push(`id:${concert.id}`);
+  }
+  return `- ${parts.join(" | ")}`;
 }
 
 async function fetchConcertsMarkdown(

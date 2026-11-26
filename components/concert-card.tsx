@@ -1,6 +1,11 @@
+import Link from "next/link";
 import AddToCalendarButton from "@/components/add-to-calendar-button";
 import { IconExternalLink } from "@/components/icons";
 import type { Concert } from "@/lib/upcoming-concerts";
+
+/** Primary action, filled accent like every other primary button on the site. */
+const TICKET_CTA_CLASS =
+  "inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-[#0b1a10] transition-opacity hover:opacity-90";
 
 export default function ConcertCard({
   concert,
@@ -9,12 +14,23 @@ export default function ConcertCard({
   concert: Concert;
   showCalendar?: boolean;
 }) {
-  // Mobile: title row first (title + icon-only Naptárba right beside it), then the
-  // details (badges, program) — no reserved actions band, no orphan whitespace.
-  // Desktop (md+): content left, Naptárba pill right — unchanged.
-  // Anchors never nest: the title is the link; the calendar button is a sibling <a>.
+  // Mobile: title row first (title + icon-only Naptárba right beside it), then
+  // the details (badges, program) and the Jegyvásárlás CTA as the card's bottom
+  // row. Desktop (md+): content left, Jegyvásárlás + Naptárba pill right.
+  // Anchors never nest: the title is the link; the calendar button and the
+  // Jegyvásárlás CTA are sibling <a>/<Link> elements, never inside the title.
   const cardClassName =
     "interactive-surface group flex flex-col gap-4 rounded-xl border border-neutral-border bg-neutral-dark/40 p-5 transition-all hover:border-primary/30 hover:bg-neutral-dark md:flex-row md:items-start md:justify-between";
+
+  const ticketCta = concert.ticketUrl ? (
+    <Link
+      href={concert.ticketUrl}
+      className={`${TICKET_CTA_CLASS} w-full md:w-auto`}
+      aria-label={`Jegyvásárlás: ${concert.title}`}
+    >
+      Jegyvásárlás
+    </Link>
+  ) : null;
 
   const titleInner = (
     <>
@@ -81,6 +97,12 @@ export default function ConcertCard({
           <p className="mt-2 text-sm text-neutral-300">{concert.note}</p>
         )}
       </div>
+
+      {/* Single CTA anchor, a direct child of the card: on mobile (flex-col)
+          it is the full-width row at the bottom of the card, on desktop
+          (flex-row) it sits in the right stack before the Naptárba pill.
+          One anchor, never a title-nested one, never duplicated. */}
+      {ticketCta}
 
       {showCalendar && (
         <div className="hidden shrink-0 md:block">
